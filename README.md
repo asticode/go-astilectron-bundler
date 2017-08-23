@@ -47,14 +47,11 @@ Depending on the OS and the arch you specified, you'll find the proper files in 
 
 The available CLI flags are:
 
-- `a`: the bundled environment is the current one
 - `v`: debug logs are shown
 
 # ldflags
 
-**astilectron-bundler** uses `ldflags` when building the project. The following variables are set:
+**astilectron-bundler** uses `ldflags` when building the project. It means if you create global vars named as the following, you will be able to acces its value:
 
 - `AppName`:  filled with the configuration app name
 - `BuiltAt`: filled with the date the build has been done at
-
-and can be used in your project.
