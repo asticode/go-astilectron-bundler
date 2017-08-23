@@ -1,6 +1,6 @@
 This package provides a way to bundle Astilectron apps properly.
 
-It has only been tested in MacOS for now, and is still work in progress.
+It has only been tested in MacOS for now, and is still a work in progress.
 
 # Installation
 
