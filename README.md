@@ -15,17 +15,21 @@ Run the following command:
 ```json
 {
   "app_name": "Test",
-  "app_icon_darwin_path": "/absolute/path/to/icon.icns",
-  "app_icon_default_path": "/absolute/path/to/icon.png",
+  "app_icon_darwin_path": "path/to/icon.icns",
+  "app_icon_default_path": "path/to/icon.png",
   "environments": [
     {"arch": "amd64", "os": "darwin"},
     {"arch": "amd64", "os": "linux"},
     {"arch": "amd64", "os": "windows"}
   ],
-  "input_path": "/absolute/go/path/src/github.com/username/project",
-  "output_path": "/absolute/path/to/output/directory"
+  "input_path": "path/to/src/github.com/username/project",
+  "output_path": "path/to/output/directory"
 }
 ```
+
+Paths can be either relative or absolute but we **strongly** encourage to use relative paths.
+
+If no input path is specified, the working directory path is used. We **strongly** encourage to `d` into your input path before executing the bundler.
 
 # Usage
 
@@ -39,9 +43,18 @@ For each environment you specified in your configuration file, **astilectron-bun
 
 Depending on the OS and the arch you specified, you'll find the proper files in here.
 
+# CLI flags
+
+The available CLI flags are:
+
+- `a`: the bundled environment is the current one
+- `v`: debug logs are shown
+
 # ldflags
 
 **astilectron-bundler** uses `ldflags` when building the project. The following variables are set:
 
 - `AppName`:  filled with the configuration app name
 - `BuiltAt`: filled with the date the build has been done at
+
+and can be used in your project.
