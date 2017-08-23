@@ -19,9 +19,9 @@ func main() {
 	astilog.FlagInit()
 
 	// Build bundler
-	var b *astilectron_bundler.Bundler
+	var b *astibundler.Bundler
 	var err error
-	if b, err = astilectron_bundler.New(*configurationPath); err != nil {
+	if b, err = astibundler.New(*configurationPath); err != nil {
 		astilog.Fatal(errors.Wrapf(err, "new bundler for configuration path %s failed", *configurationPath))
 	}
 

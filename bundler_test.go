@@ -1,4 +1,4 @@
-package astilectron_bundler
+package astibundler
 
 import (
 	"testing"
