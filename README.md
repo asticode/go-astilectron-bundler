@@ -31,7 +31,9 @@ Run the following command:
 
 Paths can be either relative or absolute but we **strongly** encourage to use relative paths.
 
-If no input path is specified, the working directory path is used. We **strongly** encourage to execute the **bundler** while in the directory of the project you're bundling.
+If no input path is specified, the working directory path is used.
+
+We **strongly** encourage to leave the input path option empty and execute the **bundler** while in the directory of the project you're bundling.
 
 # Usage
 
