@@ -35,7 +35,7 @@ func main() {
 		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
 	}
 
-	// Auto environment
+	// Default environment
 	if len(c.Environments) == 0 {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
 	}
