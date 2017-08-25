@@ -8,6 +8,7 @@ import (
 
 	"github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
+	"github.com/asticode/go-astitools/flag"
 	"github.com/pkg/errors"
 )
 
@@ -18,6 +19,7 @@ var (
 
 func main() {
 	// Init
+	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
 
@@ -46,8 +48,15 @@ func main() {
 		astilog.Fatal(errors.Wrap(err, "building bundler failed"))
 	}
 
-	// Bundle
-	if err = b.Bundle(); err != nil {
-		astilog.Fatal(errors.Wrap(err, "bundling failed"))
+	// Switch on subcommand
+	switch s {
+	case "cc":
+		// Clear cache
+
+	default:
+		// Bundle
+		if err = b.Bundle(); err != nil {
+			astilog.Fatal(errors.Wrap(err, "bundling failed"))
+		}
 	}
 }

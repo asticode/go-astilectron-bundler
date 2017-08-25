@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,15 +18,53 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Configuration represents the bundle configuration
+type Configuration struct {
+	// The app name as it should be displayed everywhere
+	// It's also set as an ldflag and therefore accessible in a global var main.AppName
+	AppName string `json:"app_name"`
+
+	// The path to the Darwin icon (.icns)
+	AppIconDarwinPath string `json:"app_icon_darwin_path"`
+
+	// The path to the default icon (for Linux and Windows)
+	AppIconDefaultPath string `json:"app_icon_default_path"`
+
+	// The bundler cache the vendor content in this path.
+	// Best is to leave it empty.
+	CachePath string `json:"cache_path"`
+
+	// List of environments the bundling should be done upon.
+	// An environment is a combination of OS and ARCH
+	Environments []ConfigurationEnvironment `json:"environments"`
+
+	// The path of the project.
+	// Best is to leave it empty and execute the bundler while in the project folder
+	InputPath string `json:"input_path"`
+
+	// The path where the files will be written
+	OutputPath string `json:"output_path"`
+}
+
+// ConfigurationEnvironment represents the bundle configuration environment
+type ConfigurationEnvironment struct {
+	Arch string `json:"arch"`
+	OS   string `json:"os"`
+}
+
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
 	appName            string
+	Client             *http.Client
 	environments       []ConfigurationEnvironment
 	pathAppIconDarwin  string
 	pathAppIconDefault string
 	pathBuild          string
+	pathCache          string
 	pathInput          string
 	pathOutput         string
+	pathResources      string
+	pathVendor         string
 }
 
 // New builds a new bundler based on a configuration
@@ -33,6 +72,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
 		appName:      c.AppName,
+		Client:       &http.Client{},
 		environments: c.Environments,
 	}
 
@@ -43,6 +83,16 @@ func New(c *Configuration) (b *Bundler, err error) {
 			err = fmt.Errorf("OS %s is invalid", env.OS)
 			return
 		}
+	}
+
+	// Cache path
+	if len(c.CachePath) > 0 {
+		if b.pathCache, err = filepath.Abs(c.CachePath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.CachePath)
+			return
+		}
+	} else {
+		b.pathCache = filepath.Join(os.TempDir(), "astibundler")
 	}
 
 	// Darwin app icon path
@@ -75,8 +125,10 @@ func New(c *Configuration) (b *Bundler, err error) {
 		}
 	}
 
-	// Build path
+	// Paths that depends on the input path
 	b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
+	b.pathResources = filepath.Join(b.pathInput, "resources")
+	b.pathVendor = filepath.Join(b.pathInput, "vendor")
 
 	// Output path
 	if len(c.OutputPath) > 0 {
@@ -94,19 +146,23 @@ func New(c *Configuration) (b *Bundler, err error) {
 	return
 }
 
+// ClearCache clears the bundler cache
+func (b *Bundler) ClearCache() (err error) {
+	// Remove cache folder
+	astilog.Debugf("Removing %s", b.pathCache)
+	if err = os.RemoveAll(b.pathCache); err != nil {
+		err = errors.Wrapf(err, "removing %s failed", b.pathCache)
+		return
+	}
+	return
+}
+
 // Bundle bundles an astilectron app based on a configuration
 func (b *Bundler) Bundle() (err error) {
 	// Reset
 	astilog.Debug("Resetting")
 	if err = b.reset(); err != nil {
 		err = errors.Wrap(err, "resetting bundler failed")
-		return
-	}
-
-	// Bind resources
-	astilog.Debug("Binding resources")
-	if err = b.bindResources(); err != nil {
-		err = errors.Wrap(err, "binding resources failed")
 		return
 	}
 
@@ -123,34 +179,96 @@ func (b *Bundler) Bundle() (err error) {
 
 // reset resets the bundler
 func (b *Bundler) reset() (err error) {
-	// Make sure the output path exists
-	astilog.Debugf("Creating %s", b.pathOutput)
-	if err = os.MkdirAll(b.pathOutput, 0777); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", b.pathOutput)
+	// Make sure the minimal paths exist
+	for _, path := range []string{b.pathCache, b.pathOutput} {
+		astilog.Debugf("Creating %s", path)
+		if err = os.MkdirAll(path, 0777); err != nil {
+			err = errors.Wrapf(err, "mkdirall %s failed", path)
+			return
+		}
+	}
+	return
+}
+
+// provisionVendorZip provisions a vendor zip file
+func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string) (err error) {
+	// Download source
+	if _, errStat := os.Stat(pathCache); os.IsNotExist(errStat) {
+		astilog.Debugf("Downloading %s into %s", pathDownload, pathCache)
+		if err = astilectron.Download(context.Background(), b.Client, pathDownload, pathCache); err != nil {
+			err = errors.Wrapf(err, "downloading %s into %s failed", pathDownload, pathCache)
+			return
+		}
+	} else {
+		astilog.Debugf("%s already exists, skipping download of %s", pathCache, pathDownload)
+	}
+
+	// Copy
+	astilog.Debugf("Copying %s to %s", pathCache, pathVendor)
+	if err = astios.Copy(context.Background(), pathCache, pathVendor); err != nil {
+		err = errors.Wrapf(err, "copying %s to %s failed", pathCache, pathVendor)
+	}
+	return
+}
+
+// provisionVendorAstilectron provisions the astilectron vendor zip file
+func (b *Bundler) provisionVendorAstilectron() error {
+	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron)), filepath.Join(b.pathVendor, zipNameAstilectron))
+}
+
+// provisionVendorElectron provisions the electron vendor zip file
+func (b *Bundler) provisionVendorElectron(oS, arch string) error {
+	return b.provisionVendorZip(astilectron.ElectronDownloadSrc(oS, arch), filepath.Join(b.pathCache, fmt.Sprintf("electron-%s-%s-%s.zip", oS, arch, astilectron.VersionElectron)), filepath.Join(b.pathVendor, zipNameElectron))
+}
+
+// provisionVendor provisions the vendor folder
+func (b *Bundler) provisionVendor(oS, arch string) (err error) {
+	// Remove previous vendor folder
+	astilog.Debugf("Removing %s", b.pathVendor)
+	if err = os.RemoveAll(b.pathVendor); err != nil {
+		err = errors.Wrapf(err, "removing %s failed", b.pathVendor)
+		return
+	}
+
+	// Create the vendor folder
+	astilog.Debugf("Creating %s", b.pathVendor)
+	if err = os.MkdirAll(b.pathVendor, 0777); err != nil {
+		err = errors.Wrapf(err, "mkdirall %s failed", b.pathVendor)
+		return
+	}
+
+	// Provision astilectron
+	if err = b.provisionVendorAstilectron(); err != nil {
+		err = errors.Wrap(err, "provisioning astilectron vendor failed")
+		return
+	}
+
+	// Provision electron
+	if err = b.provisionVendorElectron(oS, arch); err != nil {
+		err = errors.Wrapf(err, "provisioning electron vendor for OS %s and arch %s failed", oS, arch)
 		return
 	}
 	return
 }
 
-// bindResources binds the resources
-func (b *Bundler) bindResources() (err error) {
-	// Init paths
-	var ip = filepath.Join(b.pathInput, "resources")
-	var op = filepath.Join(b.pathInput, "resources.go")
-
-	// No resources folder
-	if i, errStat := os.Stat(ip); os.IsNotExist(errStat) || !i.IsDir() {
+// bindData binds the data
+func (b *Bundler) bindData(os, arch string) (err error) {
+	// Provision the vendor
+	if err = b.provisionVendor(os, arch); err != nil {
+		err = errors.Wrap(err, "provisioning the vendor failed")
 		return
 	}
 
-	// Init bindata config
+	// Build bindata config
 	var c = bindata.NewConfig()
-	c.Input = []bindata.InputConfig{{Path: ip, Recursive: true}}
-	c.Output = op
+	c.Input = []bindata.InputConfig{
+		{Path: filepath.Join(b.pathInput, "resources"), Recursive: true},
+		{Path: filepath.Join(b.pathInput, "vendor"), Recursive: true},
+	}
+	c.Output = filepath.Join(b.pathInput, "bind.go")
 	c.Prefix = b.pathInput
 
 	// Bind data
-	astilog.Debugf("Binding %s into %s", ip, op)
 	err = bindata.Translate(c)
 	return
 }
@@ -172,7 +290,12 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		return
 	}
 
-	// TODO Bind astilectron data
+	// Bind data
+	astilog.Debug("Binding data")
+	if err = b.bindData(e.OS, e.Arch); err != nil {
+		err = errors.Wrap(err, "binding data failed")
+		return
+	}
 
 	// Build
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
