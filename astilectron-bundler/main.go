@@ -52,7 +52,9 @@ func main() {
 	switch s {
 	case "cc":
 		// Clear cache
-
+		if err = b.ClearCache(); err != nil {
+			astilog.Fatal(errors.Wrap(err, "clearing cache failed"))
+		}
 	default:
 		// Bundle
 		if err = b.Bundle(); err != nil {
