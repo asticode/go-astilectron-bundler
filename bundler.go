@@ -2,13 +2,14 @@ package astibundler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"strings"
 
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
@@ -24,49 +25,12 @@ type Bundler struct {
 	c         *Configuration
 }
 
-// New builds a new bundler based on a configuration path
-func New(configurationPath string) (b *Bundler, err error) {
-	// Open file
-	var f *os.File
-	if f, err = os.Open(configurationPath); err != nil {
-		err = errors.Wrapf(err, "opening file %s failed", configurationPath)
-		return
+// New builds a new bundler based on a configuration
+func New(c *Configuration) *Bundler {
+	return &Bundler{
+		buildPath: strings.TrimPrefix(strings.TrimPrefix(c.InputPath, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator)),
+		c:         c,
 	}
-	defer f.Close()
-
-	// Unmarshal
-	b = &Bundler{c: &Configuration{}}
-	if err = json.NewDecoder(f).Decode(b.c); err != nil {
-		err = errors.Wrap(err, "unmarshaling configuration failed")
-		return
-	}
-
-	// Add build path
-	if b.buildPath, err = buildPath(b.c.InputPath); err != nil {
-		err = errors.Wrap(err, "building go path failed")
-		return
-	}
-	return
-}
-
-// buildPath builds a build paths i.e. github.com/asticode/go-project for /path/to/github.com/asticode/go-project
-func buildPath(i string) (o string, err error) {
-	var ps []string
-	var p = i
-	for len(ps) < 3 {
-		var b = filepath.Base(p)
-		if b == string(filepath.Separator) {
-			break
-		}
-		ps = append([]string{b}, ps...)
-		p = filepath.Dir(p)
-	}
-	if len(ps) < 3 {
-		err = fmt.Errorf("couldn't parse build path of %s", i)
-		return
-	}
-	o = filepath.Join(ps...)
-	return
 }
 
 // Bundle bundles an astilectron app based on a configuration

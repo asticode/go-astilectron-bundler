@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"os"
 
 	"github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
@@ -18,15 +20,22 @@ func main() {
 	flag.Parse()
 	astilog.FlagInit()
 
-	// Build bundler
-	var b *astibundler.Bundler
+	// Open file
+	var f *os.File
 	var err error
-	if b, err = astibundler.New(*configurationPath); err != nil {
-		astilog.Fatal(errors.Wrapf(err, "new bundler for configuration path %s failed", *configurationPath))
+	if f, err = os.Open(*configurationPath); err != nil {
+		astilog.Fatal(errors.Wrapf(err, "opening file %s failed", *configurationPath))
+	}
+	defer f.Close()
+
+	// Unmarshal
+	var c *astibundler.Configuration
+	if err = json.NewDecoder(f).Decode(&c); err != nil {
+		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
 	}
 
 	// Bundle
-	if err = b.Bundle(); err != nil {
+	if err = astibundler.New(c).Bundle(); err != nil {
 		astilog.Fatal(errors.Wrap(err, "bundling failed"))
 	}
 }
