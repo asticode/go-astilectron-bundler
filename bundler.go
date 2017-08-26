@@ -13,7 +13,6 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/os"
-	"github.com/asticode/go-astitools/slice"
 	"github.com/jteeuwen/go-bindata"
 	"github.com/pkg/errors"
 )
@@ -35,6 +34,15 @@ func New(c *Configuration) (b *Bundler, err error) {
 	b = &Bundler{
 		appName:      c.AppName,
 		environments: c.Environments,
+	}
+
+	// Loop through environments
+	for _, env := range b.environments {
+		// Validate OS
+		if !astilectron.IsValidOS(env.OS) {
+			err = fmt.Errorf("OS %s is invalid", env.OS)
+			return
+		}
 	}
 
 	// Darwin app icon path
@@ -149,14 +157,8 @@ func (b *Bundler) bindResources() (err error) {
 
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
-	// Validate OS
-	if !astislice.InStringSlice(e.OS, astilectron.ValidOSes()) {
-		err = fmt.Errorf("OS %s is not supported", e.OS)
-		return
-	}
-
 	// Remove previous environment folder
-	var environmentPath = filepath.Join(b.pathOutput, e.OS, e.Arch)
+	var environmentPath = filepath.Join(b.pathOutput, e.OS+"-"+e.Arch)
 	astilog.Debugf("Removing %s", environmentPath)
 	if err = os.RemoveAll(environmentPath); err != nil {
 		err = errors.Wrapf(err, "removing %s failed", environmentPath)
@@ -192,13 +194,17 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	switch e.OS {
 	case "darwin":
 		err = b.finishDarwin(environmentPath, binaryPath)
+	case "linux":
+		err = b.finishLinux(environmentPath, binaryPath)
+	case "windows":
+		err = b.finishWindows(environmentPath, binaryPath)
 	default:
 		err = fmt.Errorf("OS %s is not yet implemented", e.OS)
 	}
 	return
 }
 
-// finishDarwin finishes bundle for a darwin system
+// finishDarwin finishes bundling for a darwin system
 func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Create MacOS folder
 	var contentsPath = filepath.Join(environmentPath, b.appName+".app", "Contents")
@@ -262,6 +268,32 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
+		return
+	}
+	return
+}
+
+// finishLinux finishes bundling for a linux system
+// TODO Add .desktop file
+func (b *Bundler) finishLinux(environmentPath, binaryPath string) (err error) {
+	// Move binary
+	var linuxBinaryPath = filepath.Join(environmentPath, b.appName)
+	astilog.Debugf("Moving %s to %s", binaryPath, linuxBinaryPath)
+	if err = astios.Move(context.Background(), binaryPath, linuxBinaryPath); err != nil {
+		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, linuxBinaryPath)
+		return
+	}
+	return
+}
+
+// finishWindows finishes bundling for a linux system
+// TODO Add .ico file
+func (b *Bundler) finishWindows(environmentPath, binaryPath string) (err error) {
+	// Move binary
+	var windowsBinaryPath = filepath.Join(environmentPath, b.appName+".exe")
+	astilog.Debugf("Moving %s to %s", binaryPath, windowsBinaryPath)
+	if err = astios.Move(context.Background(), binaryPath, windowsBinaryPath); err != nil {
+		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, windowsBinaryPath)
 		return
 	}
 	return
