@@ -1,4 +1,6 @@
-This package provides a way to bundle Astilectron apps properly.
+This package provides a way to bundle an [astilectron](https://github.com/asticode/go-astilectron) app using the [bootstrap](https://github.com/asticode/go-astilectron-bootstrap).
+
+Check out the [demo](https://github.com/asticode/go-astilectron-demo) to see a working example.
 
 It has only been tested in MacOS for now, and is still a work in progress.
 
