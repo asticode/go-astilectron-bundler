@@ -7,9 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
@@ -21,16 +20,70 @@ import (
 
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
-	buildPath string
-	c         *Configuration
+	appName            string
+	environments       []ConfigurationEnvironment
+	pathAppIconDarwin  string
+	pathAppIconDefault string
+	pathBuild          string
+	pathInput          string
+	pathOutput         string
 }
 
 // New builds a new bundler based on a configuration
-func New(c *Configuration) *Bundler {
-	return &Bundler{
-		buildPath: strings.TrimPrefix(strings.TrimPrefix(c.InputPath, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator)),
-		c:         c,
+func New(c *Configuration) (b *Bundler, err error) {
+	// Init
+	b = &Bundler{
+		appName:      c.AppName,
+		environments: c.Environments,
 	}
+
+	// Darwin app icon path
+	if len(c.AppIconDarwinPath) > 0 {
+		if b.pathAppIconDarwin, err = filepath.Abs(c.AppIconDarwinPath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.AppIconDarwinPath)
+			return
+		}
+	}
+
+	// Default app icon path
+	if len(c.AppIconDefaultPath) > 0 {
+		if b.pathAppIconDefault, err = filepath.Abs(c.AppIconDefaultPath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.AppIconDefaultPath)
+			return
+		}
+	}
+
+	// Input path
+	if len(c.InputPath) > 0 {
+		if b.pathInput, err = filepath.Abs(c.InputPath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.InputPath)
+			return
+		}
+	} else {
+		// Default to current directory
+		if b.pathInput, err = os.Getwd(); err != nil {
+			err = errors.Wrap(err, "os.Getwd failed")
+			return
+		}
+	}
+
+	// Build path
+	b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
+
+	// Output path
+	if len(c.OutputPath) > 0 {
+		if b.pathOutput, err = filepath.Abs(c.OutputPath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.OutputPath)
+			return
+		}
+	} else {
+		// Default to current directory
+		if b.pathOutput, err = os.Getwd(); err != nil {
+			err = errors.Wrap(err, "os.Getwd failed")
+			return
+		}
+	}
+	return
 }
 
 // Bundle bundles an astilectron app based on a configuration
@@ -50,7 +103,7 @@ func (b *Bundler) Bundle() (err error) {
 	}
 
 	// Loop through environments
-	for _, e := range b.c.Environments {
+	for _, e := range b.environments {
 		astilog.Debugf("Bundling for environment %s/%s", e.OS, e.Arch)
 		if err = b.bundle(e); err != nil {
 			err = errors.Wrapf(err, "bundling for environment %s/%s failed", e.OS, e.Arch)
@@ -63,9 +116,9 @@ func (b *Bundler) Bundle() (err error) {
 // reset resets the bundler
 func (b *Bundler) reset() (err error) {
 	// Make sure the output path exists
-	astilog.Debugf("Creating %s", b.c.OutputPath)
-	if err = os.MkdirAll(b.c.OutputPath, 0777); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", b.c.OutputPath)
+	astilog.Debugf("Creating %s", b.pathOutput)
+	if err = os.MkdirAll(b.pathOutput, 0777); err != nil {
+		err = errors.Wrapf(err, "mkdirall %s failed", b.pathOutput)
 		return
 	}
 	return
@@ -74,8 +127,8 @@ func (b *Bundler) reset() (err error) {
 // bindResources binds the resources
 func (b *Bundler) bindResources() (err error) {
 	// Init paths
-	var ip = filepath.Join(b.c.InputPath, "resources")
-	var op = filepath.Join(b.c.InputPath, "resources.go")
+	var ip = filepath.Join(b.pathInput, "resources")
+	var op = filepath.Join(b.pathInput, "resources.go")
 
 	// No resources folder
 	if i, errStat := os.Stat(ip); os.IsNotExist(errStat) || !i.IsDir() {
@@ -86,7 +139,7 @@ func (b *Bundler) bindResources() (err error) {
 	var c = bindata.NewConfig()
 	c.Input = []bindata.InputConfig{{Path: ip, Recursive: true}}
 	c.Output = op
-	c.Prefix = b.c.InputPath
+	c.Prefix = b.pathInput
 
 	// Bind data
 	astilog.Debugf("Binding %s into %s", ip, op)
@@ -103,7 +156,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	}
 
 	// Remove previous environment folder
-	var environmentPath = filepath.Join(b.c.OutputPath, e.OS, e.Arch)
+	var environmentPath = filepath.Join(b.pathOutput, e.OS, e.Arch)
 	astilog.Debugf("Removing %s", environmentPath)
 	if err = os.RemoveAll(environmentPath); err != nil {
 		err = errors.Wrapf(err, "removing %s failed", environmentPath)
@@ -122,7 +175,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Build
 	astilog.Debug("Building")
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command("go", "build", "-ldflags", `-X "main.AppName=`+b.c.AppName+`" -X "main.BuiltAt=`+time.Now().String()+`"`, "-o", binaryPath, b.buildPath)
+	var cmd = exec.Command("go", "build", "-ldflags", `-X "main.AppName=`+b.appName+`" -X "main.BuiltAt=`+time.Now().String()+`"`, "-o", binaryPath, b.pathBuild)
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
@@ -147,7 +200,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 // finishDarwin finishes bundle for a darwin system
 func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Create MacOS folder
-	var contentsPath = filepath.Join(environmentPath, b.c.AppName+".app", "Contents")
+	var contentsPath = filepath.Join(environmentPath, b.appName+".app", "Contents")
 	var macOSPath = filepath.Join(contentsPath, "MacOS")
 	astilog.Debugf("Creating %s", macOSPath)
 	if err = os.MkdirAll(macOSPath, 0777); err != nil {
@@ -156,7 +209,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	}
 
 	// Move binary
-	var macOSBinaryPath = filepath.Join(macOSPath, b.c.AppName)
+	var macOSBinaryPath = filepath.Join(macOSPath, b.appName)
 	astilog.Debugf("Moving %s to %s", binaryPath, macOSBinaryPath)
 	if err = astios.Move(context.Background(), binaryPath, macOSBinaryPath); err != nil {
 		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, macOSBinaryPath)
@@ -171,7 +224,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	}
 
 	// App icon
-	if len(b.c.AppIconDarwinPath) > 0 {
+	if len(b.pathAppIconDarwin) > 0 {
 		// Create Resources folder
 		var resourcesPath = filepath.Join(contentsPath, "Resources")
 		astilog.Debugf("Creating %s", resourcesPath)
@@ -181,10 +234,10 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		}
 
 		// Copy icon
-		var ip = filepath.Join(resourcesPath, b.c.AppName+filepath.Ext(b.c.AppIconDarwinPath))
-		astilog.Debugf("Copying %s to %s", b.c.AppIconDarwinPath, ip)
-		if err = astios.Copy(context.Background(), b.c.AppIconDarwinPath, ip); err != nil {
-			err = errors.Wrapf(err, "copying %s to %s failed", b.c.AppIconDarwinPath, ip)
+		var ip = filepath.Join(resourcesPath, b.appName+filepath.Ext(b.pathAppIconDarwin))
+		astilog.Debugf("Copying %s to %s", b.pathAppIconDarwin, ip)
+		if err = astios.Copy(context.Background(), b.pathAppIconDarwin, ip); err != nil {
+			err = errors.Wrapf(err, "copying %s to %s failed", b.pathAppIconDarwin, ip)
 			return
 		}
 	}
@@ -196,15 +249,15 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 <plist version="1.0">
 	<dict>
 		<key>CFBundleIconFile</key>
-		<string>`+b.c.AppName+filepath.Ext(b.c.AppIconDarwinPath)+`</string>
+		<string>`+b.appName+filepath.Ext(b.pathAppIconDarwin)+`</string>
 		<key>CFBundleDisplayName</key>
-		<string>`+b.c.AppName+`</string>
+		<string>`+b.appName+`</string>
 		<key>CFBundleExecutable</key>
-		<string>`+b.c.AppName+`</string>
+		<string>`+b.appName+`</string>
 		<key>CFBundleName</key>
-		<string>`+b.c.AppName+`</string>
+		<string>`+b.appName+`</string>
 		<key>CFBundleIdentifier</key>
-		<string>com.`+b.c.AppName+`</string>
+		<string>com.`+b.appName+`</string>
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)

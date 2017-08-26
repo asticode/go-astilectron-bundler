@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"runtime"
 
 	"github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
@@ -12,6 +13,7 @@ import (
 
 // Flags
 var (
+	autoEnvironment   = flag.Bool("a", false, "if set, the bundler environment is the current one")
 	configurationPath = flag.String("c", "", "the configuration path")
 )
 
@@ -34,8 +36,19 @@ func main() {
 		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
 	}
 
+	// Auto environment
+	if *autoEnvironment {
+		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
+	}
+
+	// Build bundler
+	var b *astibundler.Bundler
+	if b, err = astibundler.New(c); err != nil {
+		astilog.Fatal(errors.Wrap(err, "building bundler failed"))
+	}
+
 	// Bundle
-	if err = astibundler.New(c).Bundle(); err != nil {
+	if err = b.Bundle(); err != nil {
 		astilog.Fatal(errors.Wrap(err, "bundling failed"))
 	}
 }
