@@ -194,7 +194,6 @@ func (b *Bundler) reset() (err error) {
 func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string) (err error) {
 	// Download source
 	if _, errStat := os.Stat(pathCache); os.IsNotExist(errStat) {
-		astilog.Debugf("Downloading %s into %s", pathDownload, pathCache)
 		if err = astilectron.Download(context.Background(), b.Client, pathDownload, pathCache); err != nil {
 			err = errors.Wrapf(err, "downloading %s into %s failed", pathDownload, pathCache)
 			return
@@ -273,6 +272,20 @@ func (b *Bundler) bindData(os, arch string) (err error) {
 	return
 }
 
+// ldflags represents ldflags
+type ldflags map[string][]string
+
+// string returns the ldflags as a string
+func (l ldflags) string() string {
+	var o []string
+	for k, ss := range l {
+		for _, s := range ss {
+			o = append(o, fmt.Sprintf(`-%s %s`, k, s))
+		}
+	}
+	return strings.Join(o, " ")
+}
+
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Remove previous environment folder
@@ -297,15 +310,28 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		return
 	}
 
-	// Build
+	// Build ldflags
+	var l = ldflags{
+		"X": []string{
+			`"main.AppName=` + b.appName + `"`,
+			`"main.BuiltAt=` + time.Now().String() + `"`,
+		},
+	}
+	if e.OS == "windows" {
+		l["H"] = []string{"windowsgui"}
+	}
+
+	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command("go", "build", "-ldflags", `-X "main.AppName=`+b.appName+`" -X "main.BuiltAt=`+time.Now().String()+`"`, "-o", binaryPath, b.pathBuild)
+	var cmd = exec.Command("go", "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
 		"GOPATH=" + os.Getenv("GOPATH"),
 	}
+
+	// Exec
 	var o []byte
 	astilog.Debugf("Executing %s", strings.Join(cmd.Args, " "))
 	if o, err = cmd.CombinedOutput(); err != nil {
