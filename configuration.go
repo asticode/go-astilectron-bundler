@@ -1,4 +1,4 @@
-package astilectron_bundler
+package astibundler
 
 // Configuration represents the bundle configuration
 type Configuration struct {
