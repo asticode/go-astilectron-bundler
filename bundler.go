@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
@@ -157,7 +158,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Build
 	astilog.Debug("Building")
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command("go", "build", "-o", binaryPath, b.buildPath)
+	var cmd = exec.Command("go", "build", "-ldflags", `-X "main.AppName=`+b.c.AppName+`" -X "main.BuiltAt=`+time.Now().String()+`"`, "-o", binaryPath, b.buildPath)
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,

@@ -14,7 +14,7 @@ Run the following command:
 
 ```json
 {
-  "app_name": "Tst",
+  "app_name": "Test",
   "app_icon_darwin_path": "/absolute/path/to/icon.icns",
   "app_icon_default_path": "/absolute/path/to/icon.png",
   "environments": [
@@ -38,3 +38,10 @@ If **astilectron-bundler** has been installed properly (and the GOPATH is in you
 For each environment you specified in your configuration file, **astilectron-bundler** will create a folder at `<output path you specified in the configuration file>/<os>/<arch>`.
 
 Depending on the OS and the arch you specified, you'll find the proper files in here.
+
+# ldflags
+
+**astilectron-bundler** uses `ldflags` when building the project. The following variables are set:
+
+- `AppName`:  filled with the configuration app name
+- `BuiltAt`: filled with the date the build has been done at
