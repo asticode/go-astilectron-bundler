@@ -173,7 +173,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// TODO Bind astilectron data
 
 	// Build
-	astilog.Debug("Building")
+	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
 	var cmd = exec.Command("go", "build", "-ldflags", `-X "main.AppName=`+b.appName+`" -X "main.BuiltAt=`+time.Now().String()+`"`, "-o", binaryPath, b.pathBuild)
 	cmd.Env = []string{
@@ -182,6 +182,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOPATH=" + os.Getenv("GOPATH"),
 	}
 	var o []byte
+	astilog.Debugf("Executing %s", strings.Join(cmd.Args, " "))
 	if o, err = cmd.CombinedOutput(); err != nil {
 		err = errors.Wrapf(err, "building failed: %s", o)
 		return

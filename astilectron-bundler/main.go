@@ -13,7 +13,6 @@ import (
 
 // Flags
 var (
-	autoEnvironment   = flag.Bool("a", false, "if set, the bundler environment is the current one")
 	configurationPath = flag.String("c", "", "the configuration path")
 )
 
@@ -37,7 +36,7 @@ func main() {
 	}
 
 	// Auto environment
-	if *autoEnvironment {
+	if len(c.Environments) == 0 {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
 	}
 
