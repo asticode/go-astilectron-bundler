@@ -14,6 +14,7 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/os"
+	"github.com/asticode/rsrc"
 	"github.com/jteeuwen/go-bindata"
 	"github.com/pkg/errors"
 )
@@ -24,12 +25,6 @@ type Configuration struct {
 	// It's also set as an ldflag and therefore accessible in a global var main.AppName
 	AppName string `json:"app_name"`
 
-	// The path to the Darwin icon (.icns)
-	AppIconDarwinPath string `json:"app_icon_darwin_path"`
-
-	// The path to the default icon (for Linux and Windows)
-	AppIconDefaultPath string `json:"app_icon_default_path"`
-
 	// The bundler cache the vendor content in this path.
 	// Best is to leave it empty.
 	CachePath string `json:"cache_path"`
@@ -37,6 +32,11 @@ type Configuration struct {
 	// List of environments the bundling should be done upon.
 	// An environment is a combination of OS and ARCH
 	Environments []ConfigurationEnvironment `json:"environments"`
+
+	// Paths to icons
+	IconPathDarwin  string `json:"icon_path_darwin"` // .icns
+	IconPathLinux   string `json:"icon_path_linux"`
+	IconPathWindows string `json:"icon_path_windows"` // .ico
 
 	// The path of the project.
 	// Best is to leave it empty and execute the bundler while in the project folder
@@ -54,17 +54,18 @@ type ConfigurationEnvironment struct {
 
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
-	appName            string
-	Client             *http.Client
-	environments       []ConfigurationEnvironment
-	pathAppIconDarwin  string
-	pathAppIconDefault string
-	pathBuild          string
-	pathCache          string
-	pathInput          string
-	pathOutput         string
-	pathResources      string
-	pathVendor         string
+	appName         string
+	Client          *http.Client
+	environments    []ConfigurationEnvironment
+	pathBuild       string
+	pathCache       string
+	pathIconDarwin  string
+	pathIconLinux   string
+	pathIconWindows string
+	pathInput       string
+	pathOutput      string
+	pathResources   string
+	pathVendor      string
 }
 
 // New builds a new bundler based on a configuration
@@ -95,18 +96,26 @@ func New(c *Configuration) (b *Bundler, err error) {
 		b.pathCache = filepath.Join(os.TempDir(), "astibundler")
 	}
 
-	// Darwin app icon path
-	if len(c.AppIconDarwinPath) > 0 {
-		if b.pathAppIconDarwin, err = filepath.Abs(c.AppIconDarwinPath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.AppIconDarwinPath)
+	// Darwin icon path
+	if len(c.IconPathDarwin) > 0 {
+		if b.pathIconDarwin, err = filepath.Abs(c.IconPathDarwin); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathDarwin)
 			return
 		}
 	}
 
-	// Default app icon path
-	if len(c.AppIconDefaultPath) > 0 {
-		if b.pathAppIconDefault, err = filepath.Abs(c.AppIconDefaultPath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.AppIconDefaultPath)
+	// Linux icon path
+	if len(c.IconPathLinux) > 0 {
+		if b.pathIconLinux, err = filepath.Abs(c.IconPathLinux); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathLinux)
+			return
+		}
+	}
+
+	// Windows icon path
+	if len(c.IconPathWindows) > 0 {
+		if b.pathIconWindows, err = filepath.Abs(c.IconPathWindows); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathWindows)
 			return
 		}
 	}
@@ -272,6 +281,19 @@ func (b *Bundler) bindData(os, arch string) (err error) {
 	return
 }
 
+// addWindowsSyso adds the proper windows .syso if needed
+func (b *Bundler) addWindowsSyso(arch string) (err error) {
+	if len(b.pathIconWindows) > 0 {
+		var p = filepath.Join(b.pathInput, "windows.syso")
+		astilog.Debugf("Running rsrc for icon %s into %s", b.pathIconWindows, p)
+		if err = rsrc.Run("", b.pathIconWindows, p, arch); err != nil {
+			err = errors.Wrapf(err, "running rsrc for icon %s into %s failed", b.pathIconWindows, p)
+			return
+		}
+	}
+	return
+}
+
 // ldflags represents ldflags
 type ldflags map[string][]string
 
@@ -308,6 +330,14 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	if err = b.bindData(e.OS, e.Arch); err != nil {
 		err = errors.Wrap(err, "binding data failed")
 		return
+	}
+
+	// Add windows .syso
+	if e.OS == "windows" {
+		if err = b.addWindowsSyso(e.Arch); err != nil {
+			err = errors.Wrap(err, "adding windows .syso failed")
+			return
+		}
 	}
 
 	// Build ldflags
@@ -379,8 +409,8 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		return
 	}
 
-	// App icon
-	if len(b.pathAppIconDarwin) > 0 {
+	// Icon
+	if len(b.pathIconDarwin) > 0 {
 		// Create Resources folder
 		var resourcesPath = filepath.Join(contentsPath, "Resources")
 		astilog.Debugf("Creating %s", resourcesPath)
@@ -390,10 +420,10 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		}
 
 		// Copy icon
-		var ip = filepath.Join(resourcesPath, b.appName+filepath.Ext(b.pathAppIconDarwin))
-		astilog.Debugf("Copying %s to %s", b.pathAppIconDarwin, ip)
-		if err = astios.Copy(context.Background(), b.pathAppIconDarwin, ip); err != nil {
-			err = errors.Wrapf(err, "copying %s to %s failed", b.pathAppIconDarwin, ip)
+		var ip = filepath.Join(resourcesPath, b.appName+filepath.Ext(b.pathIconDarwin))
+		astilog.Debugf("Copying %s to %s", b.pathIconDarwin, ip)
+		if err = astios.Copy(context.Background(), b.pathIconDarwin, ip); err != nil {
+			err = errors.Wrapf(err, "copying %s to %s failed", b.pathIconDarwin, ip)
 			return
 		}
 	}
@@ -405,7 +435,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 <plist version="1.0">
 	<dict>
 		<key>CFBundleIconFile</key>
-		<string>`+b.appName+filepath.Ext(b.pathAppIconDarwin)+`</string>
+		<string>`+b.appName+filepath.Ext(b.pathIconDarwin)+`</string>
 		<key>CFBundleDisplayName</key>
 		<string>`+b.appName+`</string>
 		<key>CFBundleExecutable</key>
@@ -436,7 +466,6 @@ func (b *Bundler) finishLinux(environmentPath, binaryPath string) (err error) {
 }
 
 // finishWindows finishes bundling for a linux system
-// TODO Add .ico file
 func (b *Bundler) finishWindows(environmentPath, binaryPath string) (err error) {
 	// Move binary
 	var windowsBinaryPath = filepath.Join(environmentPath, b.appName+".exe")
