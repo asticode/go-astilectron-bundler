@@ -14,6 +14,7 @@ import (
 
 // Flags
 var (
+	astilectronPath   = flag.String("a", "", "the astilectron path")
 	configurationPath = flag.String("c", "", "the configuration path")
 	darwin            = flag.Bool("d", false, "if set, will add darwin/amd64 to the environments")
 	linux             = flag.Bool("l", false, "if set, will add linux/amd64 to the environments")
@@ -38,6 +39,11 @@ func main() {
 	var c *astibundler.Configuration
 	if err = json.NewDecoder(f).Decode(&c); err != nil {
 		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
+	}
+
+	// Astilectron path
+	if len(*astilectronPath) > 0 {
+		c.AstilectronPath = *astilectronPath
 	}
 
 	// Environments
