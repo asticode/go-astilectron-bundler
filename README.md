@@ -40,6 +40,10 @@ If **astilectron-bundler** has been installed properly (and the $GOPATH is in yo
 
     $ astilectron-bundler -v -c <path to your configuration file>
     
+or if your working directory is your project directory and your bundler configuration has the proper name (`bundler.json`)
+
+    $ astilectron-bundler -v
+    
 # Output
 
 For each environment you specify in your configuration file, **astilectron-bundler** will create a folder `<output path you specified in the configuration file>/<os>-<arch>` that will contain the proper files.

@@ -10,6 +10,7 @@ import (
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/flag"
 	"github.com/pkg/errors"
+	"path/filepath"
 )
 
 // Flags
@@ -27,11 +28,24 @@ func main() {
 	flag.Parse()
 	astilog.FlagInit()
 
+	// Get configuration path
+	var cp = *configurationPath
+	var err error
+	if len(cp) == 0 {
+		// Get working directory path
+		var wd string
+		if wd, err = os.Getwd(); err != nil {
+			astilog.Fatal(errors.Wrap(err, "os.Getwd failed"))
+		}
+
+		// Set configuration path
+		cp = filepath.Join(wd, "bundler.json")
+	}
+
 	// Open file
 	var f *os.File
-	var err error
-	if f, err = os.Open(*configurationPath); err != nil {
-		astilog.Fatal(errors.Wrapf(err, "opening file %s failed", *configurationPath))
+	if f, err = os.Open(cp); err != nil {
+		astilog.Fatal(errors.Wrapf(err, "opening file %s failed", cp))
 	}
 	defer f.Close()
 
