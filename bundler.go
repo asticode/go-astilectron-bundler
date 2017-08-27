@@ -358,6 +358,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
 		"GOPATH=" + os.Getenv("GOPATH"),
+		"PATH=" + os.Getenv("PATH"),
 	}
 
 	// Exec
