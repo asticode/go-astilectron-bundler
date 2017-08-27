@@ -17,13 +17,14 @@ Run the following command:
 ```json
 {
   "app_name": "Test",
-  "app_icon_darwin_path": "path/to/icon.icns",
-  "app_icon_default_path": "path/to/icon.png",
   "environments": [
     {"arch": "amd64", "os": "darwin"},
     {"arch": "amd64", "os": "linux"},
     {"arch": "amd64", "os": "windows"}
   ],
+  "icon_path_darwin": "path/to/icon.icns",
+  "icon_path_linux": "path/to/icon.png",
+  "icon_path_windows": "path/to/icon.ico",
   "input_path": "path/to/src/github.com/username/project",
   "output_path": "path/to/output/directory"
 }
