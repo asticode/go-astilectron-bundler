@@ -14,6 +14,7 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/os"
+	"github.com/asticode/go-astitools/zip"
 	"github.com/asticode/rsrc"
 	"github.com/jteeuwen/go-bindata"
 	"github.com/pkg/errors"
@@ -44,6 +45,9 @@ type Configuration struct {
 
 	// The path where the files will be written
 	OutputPath string `json:"output_path"`
+
+	//!\\ DEBUG ONLY
+	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
 }
 
 // ConfigurationEnvironment represents the bundle configuration environment
@@ -57,6 +61,7 @@ type Bundler struct {
 	appName         string
 	Client          *http.Client
 	environments    []ConfigurationEnvironment
+	pathAstilectron string
 	pathBuild       string
 	pathCache       string
 	pathIconDarwin  string
@@ -66,6 +71,22 @@ type Bundler struct {
 	pathOutput      string
 	pathResources   string
 	pathVendor      string
+}
+
+// absPath computes the absolute path
+func absPath(configPath string, defaultPathFn func() (string, error)) (o string, err error) {
+	if len(configPath) > 0 {
+		if o, err = filepath.Abs(configPath); err != nil {
+			err = errors.Wrapf(err, "filepath.Abs of %s failed", configPath)
+			return
+		}
+	} else if defaultPathFn != nil {
+		if o, err = defaultPathFn(); err != nil {
+			err = errors.Wrapf(err, "default path function to compute absPath of %s failed", configPath)
+			return
+		}
+	}
+	return
 }
 
 // New builds a new bundler based on a configuration
@@ -86,52 +107,34 @@ func New(c *Configuration) (b *Bundler, err error) {
 		}
 	}
 
+	// Astilectron path
+	if b.pathAstilectron, err = absPath(c.AstilectronPath, nil); err != nil {
+		return
+	}
+
 	// Cache path
-	if len(c.CachePath) > 0 {
-		if b.pathCache, err = filepath.Abs(c.CachePath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.CachePath)
-			return
-		}
-	} else {
-		b.pathCache = filepath.Join(os.TempDir(), "astibundler")
+	if b.pathCache, err = absPath(c.CachePath, func() (string, error) { return filepath.Join(os.TempDir(), "astibundler"), nil }); err != nil {
+		return
 	}
 
 	// Darwin icon path
-	if len(c.IconPathDarwin) > 0 {
-		if b.pathIconDarwin, err = filepath.Abs(c.IconPathDarwin); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathDarwin)
-			return
-		}
+	if b.pathIconDarwin, err = absPath(c.IconPathDarwin, nil); err != nil {
+		return
 	}
 
 	// Linux icon path
-	if len(c.IconPathLinux) > 0 {
-		if b.pathIconLinux, err = filepath.Abs(c.IconPathLinux); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathLinux)
-			return
-		}
+	if b.pathIconLinux, err = absPath(c.IconPathLinux, nil); err != nil {
+		return
 	}
 
 	// Windows icon path
-	if len(c.IconPathWindows) > 0 {
-		if b.pathIconWindows, err = filepath.Abs(c.IconPathWindows); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.IconPathWindows)
-			return
-		}
+	if b.pathIconWindows, err = absPath(c.IconPathWindows, nil); err != nil {
+		return
 	}
 
 	// Input path
-	if len(c.InputPath) > 0 {
-		if b.pathInput, err = filepath.Abs(c.InputPath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.InputPath)
-			return
-		}
-	} else {
-		// Default to current directory
-		if b.pathInput, err = os.Getwd(); err != nil {
-			err = errors.Wrap(err, "os.Getwd failed")
-			return
-		}
+	if b.pathInput, err = absPath(c.InputPath, os.Getwd); err != nil {
+		return
 	}
 
 	// Paths that depends on the input path
@@ -140,17 +143,8 @@ func New(c *Configuration) (b *Bundler, err error) {
 	b.pathVendor = filepath.Join(b.pathInput, "vendor")
 
 	// Output path
-	if len(c.OutputPath) > 0 {
-		if b.pathOutput, err = filepath.Abs(c.OutputPath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", c.OutputPath)
-			return
-		}
-	} else {
-		// Default to current directory
-		if b.pathOutput, err = os.Getwd(); err != nil {
-			err = errors.Wrap(err, "os.Getwd failed")
-			return
-		}
+	if b.pathOutput, err = absPath(c.OutputPath, os.Getwd); err != nil {
+		return
 	}
 	return
 }
@@ -221,7 +215,12 @@ func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string)
 
 // provisionVendorAstilectron provisions the astilectron vendor zip file
 func (b *Bundler) provisionVendorAstilectron() error {
-	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron)), filepath.Join(b.pathVendor, zipNameAstilectron))
+	var p = filepath.Join(b.pathVendor, zipNameAstilectron)
+	if len(b.pathAstilectron) > 0 {
+		astilog.Debugf("Zipping %s into %s", b.pathAstilectron, p)
+		return astizip.Zip(context.Background(), b.pathAstilectron, p, fmt.Sprintf("astilectron-%s", astilectron.VersionAstilectron))
+	}
+	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron)), p)
 }
 
 // provisionVendorElectron provisions the electron vendor zip file
