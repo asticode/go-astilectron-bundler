@@ -15,6 +15,9 @@ import (
 // Flags
 var (
 	configurationPath = flag.String("c", "", "the configuration path")
+	darwin            = flag.Bool("d", false, "if set, will add darwin/amd64 to the environments")
+	linux             = flag.Bool("l", false, "if set, will add linux/amd64 to the environments")
+	windows           = flag.Bool("w", false, "if set, will add windows/amd64 to the environments")
 )
 
 func main() {
@@ -37,7 +40,16 @@ func main() {
 		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
 	}
 
-	// Default environment
+	// Environments
+	if *darwin {
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "darwin"})
+	}
+	if *linux {
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "linux"})
+	}
+	if *windows {
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "windows"})
+	}
 	if len(c.Environments) == 0 {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
 	}
