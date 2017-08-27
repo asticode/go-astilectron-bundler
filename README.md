@@ -31,29 +31,21 @@ Run the following command:
 
 Paths can be either relative or absolute but we **strongly** encourage to use relative paths.
 
-If no input path is specified, the working directory path is used. We **strongly** encourage to `d` into your input path before executing the bundler.
+If no input path is specified, the working directory path is used. We **strongly** encourage to execute the **bundler** while in the directory of the project you're bundling.
 
 # Usage
 
-If **astilectron-bundler** has been installed properly (and the GOPATH is in your PATH), run the following command:
+If **astilectron-bundler** has been installed properly (and the $GOPATH is in your $PATH), run the following command:
 
     $ astilectron-bundler -v -c <path to your configuration file>
     
 # Output
 
-For each environment you specified in your configuration file, **astilectron-bundler** will create a folder at `<output path you specified in the configuration file>/<os>/<arch>`.
+For each environment you specify in your configuration file, **astilectron-bundler** will create a folder `<output path you specified in the configuration file>/<os>-<arch>` that will contain the proper files.
 
-Depending on the OS and the arch you specified, you'll find the proper files in here.
+# Ldflags
 
-# CLI flags
-
-The available CLI flags are:
-
-- `v`: debug logs are shown
-
-# ldflags
-
-**astilectron-bundler** uses `ldflags` when building the project. It means if you create global vars named as the following, you will be able to acces its value:
+**astilectron-bundler** uses `ldflags` when building the project. It means if you add one of the following variables as global exported variables in your project, they will have the following value:
 
 - `AppName`:  filled with the configuration app name
 - `BuiltAt`: filled with the date the build has been done at
