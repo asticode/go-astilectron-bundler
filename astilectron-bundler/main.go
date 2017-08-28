@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/flag"
 	"github.com/pkg/errors"
-	"path/filepath"
 )
 
 // Flags
