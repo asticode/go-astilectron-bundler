@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/akavel/rsrc/rsrc"
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/os"
 	"github.com/asticode/go-astitools/zip"
-	"github.com/asticode/rsrc"
 	"github.com/jteeuwen/go-bindata"
 	"github.com/pkg/errors"
 )
@@ -296,7 +296,7 @@ func (b *Bundler) addWindowsSyso(arch string) (err error) {
 	if len(b.pathIconWindows) > 0 {
 		var p = filepath.Join(b.pathInput, "windows.syso")
 		astilog.Debugf("Running rsrc for icon %s into %s", b.pathIconWindows, p)
-		if err = rsrc.Run("", b.pathIconWindows, p, arch); err != nil {
+		if err = rsrc.Embed(p, arch, "", b.pathIconWindows); err != nil {
 			err = errors.Wrapf(err, "running rsrc for icon %s into %s failed", b.pathIconWindows, p)
 			return
 		}
