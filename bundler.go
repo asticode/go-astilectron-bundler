@@ -43,6 +43,10 @@ type Configuration struct {
 	// Best is to leave it empty and execute the bundler while in the project folder
 	InputPath string `json:"input_path"`
 
+	// The path of the go binary
+	// Best is to leave it empty. Default value is "go"
+	GoBinaryPath string `json:"go_binary_path"`
+
 	// The path where the files will be written
 	OutputPath string `json:"output_path"`
 
@@ -68,6 +72,7 @@ type Bundler struct {
 	pathIconLinux   string
 	pathIconWindows string
 	pathInput       string
+	pathGoBinary    string
 	pathOutput      string
 	pathResources   string
 	pathVendor      string
@@ -141,6 +146,12 @@ func New(c *Configuration) (b *Bundler, err error) {
 	b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
 	b.pathResources = filepath.Join(b.pathInput, "resources")
 	b.pathVendor = filepath.Join(b.pathInput, "vendor")
+
+	// Go binary path
+	b.pathGoBinary = "go"
+	if len(c.GoBinaryPath) > 0 {
+		b.pathGoBinary = c.GoBinaryPath
+	}
 
 	// Output path
 	if b.pathOutput, err = absPath(c.OutputPath, os.Getwd); err != nil {
@@ -353,7 +364,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command("go", "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
+	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
