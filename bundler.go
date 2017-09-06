@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/akavel/rsrc/rsrc"
@@ -63,7 +65,9 @@ type ConfigurationEnvironment struct {
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
 	appName         string
+	cancel          context.CancelFunc
 	Client          *http.Client
+	ctx             context.Context
 	environments    []ConfigurationEnvironment
 	pathAstilectron string
 	pathBuild       string
@@ -102,6 +106,9 @@ func New(c *Configuration) (b *Bundler, err error) {
 		Client:       &http.Client{},
 		environments: c.Environments,
 	}
+
+	// Add context
+	b.ctx, b.cancel = context.WithCancel(context.Background())
 
 	// Loop through environments
 	for _, env := range b.environments {
@@ -160,6 +167,24 @@ func New(c *Configuration) (b *Bundler, err error) {
 	return
 }
 
+// HandleSignals handles signals
+func (b *Bundler) HandleSignals() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGABRT, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+	go func() {
+		for s := range ch {
+			astilog.Infof("Received signal %s", s)
+			b.Stop()
+			return
+		}
+	}()
+}
+
+// Stop stops the bundler
+func (b *Bundler) Stop() {
+	b.cancel()
+}
+
 // ClearCache clears the bundler cache
 func (b *Bundler) ClearCache() (err error) {
 	// Remove cache folder
@@ -208,7 +233,7 @@ func (b *Bundler) reset() (err error) {
 func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string) (err error) {
 	// Download source
 	if _, errStat := os.Stat(pathCache); os.IsNotExist(errStat) {
-		if err = astilectron.Download(context.Background(), b.Client, pathDownload, pathCache); err != nil {
+		if err = astilectron.Download(b.ctx, b.Client, pathDownload, pathCache); err != nil {
 			err = errors.Wrapf(err, "downloading %s into %s failed", pathDownload, pathCache)
 			return
 		}
@@ -216,20 +241,40 @@ func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string)
 		astilog.Debugf("%s already exists, skipping download of %s", pathCache, pathDownload)
 	}
 
+	// Check context error
+	if b.ctx.Err() != nil {
+		return b.ctx.Err()
+	}
+
 	// Copy
 	astilog.Debugf("Copying %s to %s", pathCache, pathVendor)
-	if err = astios.Copy(context.Background(), pathCache, pathVendor); err != nil {
+	if err = astios.Copy(b.ctx, pathCache, pathVendor); err != nil {
 		err = errors.Wrapf(err, "copying %s to %s failed", pathCache, pathVendor)
+		return
+	}
+
+	// Check context error
+	if b.ctx.Err() != nil {
+		return b.ctx.Err()
 	}
 	return
 }
 
 // provisionVendorAstilectron provisions the astilectron vendor zip file
-func (b *Bundler) provisionVendorAstilectron() error {
+func (b *Bundler) provisionVendorAstilectron() (err error) {
 	var p = filepath.Join(b.pathVendor, zipNameAstilectron)
 	if len(b.pathAstilectron) > 0 {
+		// Zip
 		astilog.Debugf("Zipping %s into %s", b.pathAstilectron, p)
-		return astizip.Zip(context.Background(), b.pathAstilectron, p, fmt.Sprintf("astilectron-%s", astilectron.VersionAstilectron))
+		if err = astizip.Zip(b.ctx, b.pathAstilectron, p, fmt.Sprintf("astilectron-%s", astilectron.VersionAstilectron)); err != nil {
+			err = errors.Wrapf(err, "zipping %s into %s failed", b.pathAstilectron, p)
+			return
+		}
+
+		// Check context error
+		if b.ctx.Err() != nil {
+			return b.ctx.Err()
+		}
 	}
 	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron)), p)
 }
@@ -408,9 +453,14 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Move binary
 	var macOSBinaryPath = filepath.Join(macOSPath, b.appName)
 	astilog.Debugf("Moving %s to %s", binaryPath, macOSBinaryPath)
-	if err = astios.Move(context.Background(), binaryPath, macOSBinaryPath); err != nil {
+	if err = astios.Move(b.ctx, binaryPath, macOSBinaryPath); err != nil {
 		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, macOSBinaryPath)
 		return
+	}
+
+	// Check context error
+	if b.ctx.Err() != nil {
+		return b.ctx.Err()
 	}
 
 	// Make sure the binary is executable
@@ -433,9 +483,14 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		// Copy icon
 		var ip = filepath.Join(resourcesPath, b.appName+filepath.Ext(b.pathIconDarwin))
 		astilog.Debugf("Copying %s to %s", b.pathIconDarwin, ip)
-		if err = astios.Copy(context.Background(), b.pathIconDarwin, ip); err != nil {
+		if err = astios.Copy(b.ctx, b.pathIconDarwin, ip); err != nil {
 			err = errors.Wrapf(err, "copying %s to %s failed", b.pathIconDarwin, ip)
 			return
+		}
+
+		// Check context error
+		if b.ctx.Err() != nil {
+			return b.ctx.Err()
 		}
 	}
 
@@ -469,9 +524,14 @@ func (b *Bundler) finishLinux(environmentPath, binaryPath string) (err error) {
 	// Move binary
 	var linuxBinaryPath = filepath.Join(environmentPath, b.appName)
 	astilog.Debugf("Moving %s to %s", binaryPath, linuxBinaryPath)
-	if err = astios.Move(context.Background(), binaryPath, linuxBinaryPath); err != nil {
+	if err = astios.Move(b.ctx, binaryPath, linuxBinaryPath); err != nil {
 		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, linuxBinaryPath)
 		return
+	}
+
+	// Check context error
+	if b.ctx.Err() != nil {
+		return b.ctx.Err()
 	}
 	return
 }
@@ -481,9 +541,14 @@ func (b *Bundler) finishWindows(environmentPath, binaryPath string) (err error) 
 	// Move binary
 	var windowsBinaryPath = filepath.Join(environmentPath, b.appName+".exe")
 	astilog.Debugf("Moving %s to %s", binaryPath, windowsBinaryPath)
-	if err = astios.Move(context.Background(), binaryPath, windowsBinaryPath); err != nil {
+	if err = astios.Move(b.ctx, binaryPath, windowsBinaryPath); err != nil {
 		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, windowsBinaryPath)
 		return
+	}
+
+	// Check context error
+	if b.ctx.Err() != nil {
+		return b.ctx.Err()
 	}
 	return
 }

@@ -80,6 +80,9 @@ func main() {
 		astilog.Fatal(errors.Wrap(err, "building bundler failed"))
 	}
 
+	// Handle signals
+	b.HandleSignals()
+
 	// Switch on subcommand
 	switch s {
 	case "cc":
