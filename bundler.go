@@ -262,7 +262,7 @@ func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string)
 
 // provisionVendorAstilectron provisions the astilectron vendor zip file
 func (b *Bundler) provisionVendorAstilectron() (err error) {
-	var p = filepath.Join(b.pathVendor, zipNameAstilectron)
+	var p = filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron))
 	if len(b.pathAstilectron) > 0 {
 		// Zip
 		astilog.Debugf("Zipping %s into %s", b.pathAstilectron, p)
@@ -276,7 +276,7 @@ func (b *Bundler) provisionVendorAstilectron() (err error) {
 			return b.ctx.Err()
 		}
 	}
-	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", astilectron.VersionAstilectron)), p)
+	return b.provisionVendorZip(astilectron.AstilectronDownloadSrc(), p, filepath.Join(b.pathVendor, zipNameAstilectron))
 }
 
 // provisionVendorElectron provisions the electron vendor zip file
