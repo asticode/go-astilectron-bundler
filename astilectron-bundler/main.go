@@ -85,6 +85,11 @@ func main() {
 
 	// Switch on subcommand
 	switch s {
+	case "bd":
+		// Bind data
+		if err = b.BindData(runtime.GOOS, runtime.GOARCH); err != nil {
+			astilog.Fatal(errors.Wrap(err, "binding data failed"))
+		}
 	case "cc":
 		// Clear cache
 		if err = b.ClearCache(); err != nil {

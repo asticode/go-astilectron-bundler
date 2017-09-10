@@ -314,8 +314,8 @@ func (b *Bundler) provisionVendor(oS, arch string) (err error) {
 	return
 }
 
-// bindData binds the data
-func (b *Bundler) bindData(os, arch string) (err error) {
+// BindData binds the data
+func (b *Bundler) BindData(os, arch string) (err error) {
 	// Provision the vendor
 	if err = b.provisionVendor(os, arch); err != nil {
 		err = errors.Wrap(err, "provisioning the vendor failed")
@@ -332,6 +332,7 @@ func (b *Bundler) bindData(os, arch string) (err error) {
 	c.Prefix = b.pathInput
 
 	// Bind data
+	astilog.Debugf("Generating %s", c.Output)
 	err = bindata.Translate(c)
 	return
 }
@@ -382,7 +383,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// Bind data
 	astilog.Debug("Binding data")
-	if err = b.bindData(e.OS, e.Arch); err != nil {
+	if err = b.BindData(e.OS, e.Arch); err != nil {
 		err = errors.Wrap(err, "binding data failed")
 		return
 	}
