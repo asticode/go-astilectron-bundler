@@ -54,3 +54,16 @@ For each environment you specify in your configuration file, **astilectron-bundl
 
 - `AppName`:  filled with the configuration app name
 - `BuiltAt`: filled with the date the build has been done at
+
+# Subcommands
+## Only bind data: bd
+
+Use this subcommand if you want to skip most of the bundling process and only bind data/generate the `bind.go` file (useful when you want to test your app running `go run *.go`):
+
+    $ astilectron-bundler bd -v -c <path to your configuration file>
+
+## Clear the cache: cc
+
+The **bundler** stores downloaded files in a cache to avoid downloading them over and over again. That cache may be corrupted. In that case, use this subcommand to clear the cache:
+
+    $ astilectron-bundler cc -v
