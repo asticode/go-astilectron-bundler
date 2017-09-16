@@ -416,6 +416,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOOS=" + e.OS,
 		"GOPATH=" + os.Getenv("GOPATH"),
 		"PATH=" + os.Getenv("PATH"),
+		"TEMP=" + os.Getenv("TEMP"),
 	}
 
 	// Exec
