@@ -71,7 +71,6 @@ type Bundler struct {
 	Client          *http.Client
 	ctx             context.Context
 	environments    []ConfigurationEnvironment
-	goCmd           string
 	pathAstilectron string
 	pathBuild       string
 	pathCache       string
