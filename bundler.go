@@ -418,6 +418,9 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
 	}
+	if os.Getenv("TAGS") != "" {
+		cmd.Env = append(cmd.Env, "TAGS="+os.Getenv("TAGS"))
+	}
 
 	// Exec
 	var o []byte
