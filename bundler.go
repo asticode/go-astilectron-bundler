@@ -48,6 +48,8 @@ type Configuration struct {
 	// The path of the go binary
 	// Best is to leave it empty. Default value is "go"
 	GoBinaryPath string `json:"go_binary_path"`
+	// The path of the resouces, default is resouces
+	ResourcesPath []string `json:"resources_path"`
 
 	// The path where the files will be written
 	OutputPath string `json:"output_path"`
@@ -69,6 +71,7 @@ type Bundler struct {
 	Client          *http.Client
 	ctx             context.Context
 	environments    []ConfigurationEnvironment
+	goCmd           string
 	pathAstilectron string
 	pathBuild       string
 	pathCache       string
@@ -78,7 +81,7 @@ type Bundler struct {
 	pathInput       string
 	pathGoBinary    string
 	pathOutput      string
-	pathResources   string
+	pathResources   []string
 	pathVendor      string
 }
 
@@ -150,8 +153,16 @@ func New(c *Configuration) (b *Bundler, err error) {
 	}
 
 	// Paths that depends on the input path
-	b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
-	b.pathResources = filepath.Join(b.pathInput, "resources")
+	if strings.HasPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")) {
+		b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
+	}
+
+	if len(c.ResourcesPath) == 0 {
+		c.ResourcesPath = []string{"resouces"}
+	}
+	for _, p := range c.ResourcesPath {
+		b.pathResources = append(b.pathResources, filepath.Join(b.pathInput, p))
+	}
 	b.pathVendor = filepath.Join(b.pathInput, "vendor")
 
 	// Go binary path
@@ -325,8 +336,10 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 	// Build bindata config
 	var c = bindata.NewConfig()
 	c.Input = []bindata.InputConfig{
-		{Path: filepath.Join(b.pathInput, "resources"), Recursive: true},
 		{Path: filepath.Join(b.pathInput, "vendor"), Recursive: true},
+	}
+	for _, p := range b.pathResources {
+		c.Input = append(c.Input, bindata.InputConfig{Path: p, Recursive: true})
 	}
 	c.Output = filepath.Join(b.pathInput, "bind.go")
 	c.Prefix = b.pathInput
