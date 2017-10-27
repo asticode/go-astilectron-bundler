@@ -417,9 +417,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOPATH=" + os.Getenv("GOPATH"),
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
-	}
-	if os.Getenv("TAGS") != "" {
-		cmd.Env = append(cmd.Env, "TAGS="+os.Getenv("TAGS"))
+		"TAGS=" + os.Getenv("TAGS"),
 	}
 
 	// Exec
