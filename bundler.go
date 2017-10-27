@@ -48,7 +48,7 @@ type Configuration struct {
 	// The path of the go binary
 	// Best is to leave it empty. Default value is "go"
 	GoBinaryPath string `json:"go_binary_path"`
-	// The path of the resouces, default is resouces
+	// The path of the resources, default is resources
 	ResourcesPath []string `json:"resources_path"`
 
 	// The path where the files will be written
@@ -157,7 +157,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 	}
 
 	if len(c.ResourcesPath) == 0 {
-		c.ResourcesPath = []string{"resouces"}
+		c.ResourcesPath = []string{"resources"}
 	}
 	for _, p := range c.ResourcesPath {
 		b.pathResources = append(b.pathResources, filepath.Join(b.pathInput, p))
