@@ -89,7 +89,7 @@ func main() {
 		// Bind Data
 		for _, env := range c.Environments {
 			if err = b.BindData(env.OS, env.Arch); err != nil {
-				astilog.Fatal(errors.Wrap(err, "binding data failed for "+env.OS+"/"+env.Arch))
+				astilog.Fatal(errors.Wrapf(err, "binding data failed for %s/%s", env.OS, env.Arch))
 			}
 		}
 	case "cc":
