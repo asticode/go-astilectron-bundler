@@ -328,7 +328,8 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 		{Path: filepath.Join(b.pathInput, "resources"), Recursive: true},
 		{Path: filepath.Join(b.pathInput, "vendor"), Recursive: true},
 	}
-	c.Output = filepath.Join(b.pathInput, "bind.go")
+	c.Tags = fmt.Sprintf("%s,%s", os, arch)
+	c.Output = filepath.Join(b.pathInput, fmt.Sprintf("bind_%s_%s.go", os, arch))
 	c.Prefix = b.pathInput
 
 	// Bind data
