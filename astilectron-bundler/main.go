@@ -86,9 +86,11 @@ func main() {
 	// Switch on subcommand
 	switch s {
 	case "bd":
-		// Bind data
-		if err = b.BindData(runtime.GOOS, runtime.GOARCH); err != nil {
-			astilog.Fatal(errors.Wrap(err, "binding data failed"))
+		// Bind Data
+		for _, env := range c.Environments {
+			if err = b.BindData(env.OS, env.Arch); err != nil {
+				astilog.Fatal(errors.Wrap(err, "binding data failed for "+env.OS+"/"+env.Arch))
+			}
 		}
 	case "cc":
 		// Clear cache
