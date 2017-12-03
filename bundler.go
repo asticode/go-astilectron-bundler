@@ -358,6 +358,10 @@ type ldflags map[string][]string
 func (l ldflags) string() string {
 	var o []string
 	for k, ss := range l {
+		if len(ss) == 0 {
+			o = append(o, "-"+k)
+			continue
+		}
 		for _, s := range ss {
 			o = append(o, fmt.Sprintf(`-%s %s`, k, s))
 		}
@@ -399,6 +403,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// Build ldflags
 	var l = ldflags{
+		"s": []string{},
 		"X": []string{
 			`"main.AppName=` + b.appName + `"`,
 			`"main.BuiltAt=` + time.Now().String() + `"`,
