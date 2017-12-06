@@ -150,7 +150,13 @@ func New(c *Configuration) (b *Bundler, err error) {
 	}
 
 	// Paths that depends on the input path
-	b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, filepath.Join(os.Getenv("GOPATH"), "src")), string(os.PathSeparator))
+	for _, i := range filepath.SplitList(os.Getenv("GOPATH")) {
+		var p = filepath.Join(i, "src")
+		if strings.HasPrefix(b.pathInput, p) {
+			b.pathBuild = strings.TrimPrefix(strings.TrimPrefix(b.pathInput, p), string(os.PathSeparator))
+			break
+		}
+	}
 	b.pathResources = filepath.Join(b.pathInput, "resources")
 	b.pathVendor = filepath.Join(b.pathInput, "vendor")
 
