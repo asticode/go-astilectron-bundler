@@ -52,6 +52,9 @@ type Configuration struct {
 	// The path where the files will be written
 	OutputPath string `json:"output_path"`
 
+	// The path where the vendor files will be written
+	VendorPath string `json:"vendor_path"`
+
 	//!\\ DEBUG ONLY
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
 }
@@ -158,7 +161,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 		}
 	}
 	b.pathResources = filepath.Join(b.pathInput, "resources")
-	b.pathVendor = filepath.Join(b.pathInput, "vendor")
+
+	// Vendor path
+	if b.pathVendor, err = absPath(c.VendorPath, func() (string, error) { return filepath.Join(b.pathInput, vendorDirectoryName), nil }); err != nil {
+		return
+	}
 
 	// Go binary path
 	b.pathGoBinary = "go"
@@ -332,7 +339,7 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 	var c = bindata.NewConfig()
 	c.Input = []bindata.InputConfig{
 		{Path: filepath.Join(b.pathInput, "resources"), Recursive: true},
-		{Path: filepath.Join(b.pathInput, "vendor"), Recursive: true},
+		{Path: filepath.Join(b.pathVendor), Recursive: true},
 	}
 	c.Tags = fmt.Sprintf("%s,%s", os, arch)
 	c.Output = filepath.Join(b.pathInput, fmt.Sprintf("bind_%s_%s.go", os, arch))
