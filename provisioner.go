@@ -1,14 +1,19 @@
 package astibundler
 
-import "github.com/asticode/go-astilectron"
+import (
+	"path/filepath"
+
+	"github.com/asticode/go-astilectron"
+)
 
 // Constants
 const (
-	zipNameAstilectron = "astilectron.zip"
-	zipNameElectron    = "electron.zip"
+	vendorDirectoryName = "vendor_astilectron_bundler"
+	zipNameAstilectron  = "astilectron.zip"
+	zipNameElectron     = "electron.zip"
 )
 
 // NewProvisioner builds the proper disembedder provisioner
 func NewProvisioner(disembedFunc func(string) ([]byte, error)) astilectron.Provisioner {
-	return astilectron.NewDisembedderProvisioner(disembedFunc, "vendor/"+zipNameAstilectron, "vendor/"+zipNameElectron)
+	return astilectron.NewDisembedderProvisioner(disembedFunc, filepath.Join(vendorDirectoryName, zipNameAstilectron), filepath.Join(vendorDirectoryName, zipNameElectron))
 }
