@@ -52,8 +52,11 @@ type Configuration struct {
 	// The path where the files will be written
 	OutputPath string `json:"output_path"`
 
-	// The path where the vendor files will be written
-	VendorPath string `json:"vendor_path"`
+	// The path where the resources will be written
+	ResourcesPath string `json:"resources_path"`
+
+	// The path where the vendor directory will be created/used
+	VendorDirPath string `json:"vendor_dir_path"`
 
 	//!\\ DEBUG ONLY
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
@@ -160,12 +163,18 @@ func New(c *Configuration) (b *Bundler, err error) {
 			break
 		}
 	}
-	b.pathResources = filepath.Join(b.pathInput, "resources")
 
-	// Vendor path
-	if b.pathVendor, err = absPath(c.VendorPath, func() (string, error) { return filepath.Join(b.pathInput, vendorDirectoryName), nil }); err != nil {
+	// Resources path
+	if b.pathResources, err = absPath(c.ResourcesPath, func() (string, error) { return filepath.Join(b.pathInput, "resources"), nil }); err != nil {
 		return
 	}
+
+	// Vendor path
+	var vendorDirPath string
+	if vendorDirPath, err = absPath(c.VendorDirPath, func() (string, error) { return b.pathInput, nil }); err != nil {
+		return
+	}
+	b.pathVendor = filepath.Join(vendorDirPath, vendorDirectoryName)
 
 	// Go binary path
 	b.pathGoBinary = "go"
@@ -338,7 +347,7 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 	// Build bindata config
 	var c = bindata.NewConfig()
 	c.Input = []bindata.InputConfig{
-		{Path: filepath.Join(b.pathInput, "resources"), Recursive: true},
+		{Path: filepath.Join(b.pathResources), Recursive: true},
 		{Path: filepath.Join(b.pathVendor), Recursive: true},
 	}
 	c.Tags = fmt.Sprintf("%s,%s", os, arch)
