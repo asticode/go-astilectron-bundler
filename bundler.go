@@ -443,6 +443,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
 		"GOPATH=" + os.Getenv("GOPATH"),
+		"GOROOT=" + os.Getenv("GOROOT"),
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
 		"TAGS=" + os.Getenv("TAGS"),
