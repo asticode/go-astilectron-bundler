@@ -64,8 +64,11 @@ type Configuration struct {
 
 // ConfigurationEnvironment represents the bundle configuration environment
 type ConfigurationEnvironment struct {
-	Arch string `json:"arch"`
-	OS   string `json:"os"`
+	Arch        string `json:"arch"`
+	OS          string `json:"os"`
+	CC          string `json:"CC"`
+	CXX         string `json:"CXX"`
+	CGO_ENABLED string `json:"CGO_ENABLED"`
 }
 
 // Bundler represents an object capable of bundling an Astilectron app
@@ -447,6 +450,16 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
 		"TAGS=" + os.Getenv("TAGS"),
+	}
+
+	if e.CC != "" {
+		cmd.Env = append(cmd.Env, "CC=" + e.CC)
+	}
+	if e.CXX != "" {
+		cmd.Env = append(cmd.Env, "CXX=" + e.CXX)
+	}
+	if e.CGO_ENABLED != "" {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=" + e.CGO_ENABLED)
 	}
 
 	// Exec
