@@ -450,8 +450,10 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"TAGS=" + os.Getenv("TAGS"),
 	}
 
-	for k, v := range e.EnvironmentVariables {
-		cmd.Env = append(cmd.Env, k+"="+v)
+	if e.EnvironmentVariables != nil {
+		for k, v := range e.EnvironmentVariables {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 	}
 
 	// Exec
