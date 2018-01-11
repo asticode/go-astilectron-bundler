@@ -64,8 +64,9 @@ type Configuration struct {
 
 // ConfigurationEnvironment represents the bundle configuration environment
 type ConfigurationEnvironment struct {
-	Arch string `json:"arch"`
-	OS   string `json:"os"`
+	Arch                 string            `json:"arch"`
+	EnvironmentVariables map[string]string `json:"env"`
+	OS                   string            `json:"os"`
 }
 
 // Bundler represents an object capable of bundling an Astilectron app
@@ -447,6 +448,12 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
 		"TAGS=" + os.Getenv("TAGS"),
+	}
+
+	if e.EnvironmentVariables != nil {
+		for k, v := range e.EnvironmentVariables {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 	}
 
 	// Exec
