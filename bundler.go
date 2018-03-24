@@ -426,6 +426,9 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// Build ldflags
 	var l = ldflags{
+		"linkmode": []string{
+			"internal",
+		},
 		"s": []string{},
 		"X": []string{
 			`"main.AppName=` + b.appName + `"`,
