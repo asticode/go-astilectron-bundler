@@ -28,6 +28,10 @@ Run the following command:
       }
     }
   ],
+  "xgo": {
+      "enabled": true,
+      "deps": ["https://gmplib.org/download/gmp/gmp-6.0.0a.tar.bz2"]
+  },
   "icon_path_darwin": "path/to/icon.icns",
   "icon_path_linux": "path/to/icon.png",
   "icon_path_windows": "path/to/icon.ico",
@@ -41,6 +45,32 @@ Paths can be either relative or absolute but we **strongly** encourage to use re
 If no input path is specified, the working directory path is used.
 
 We **strongly** encourage to leave the input path option empty and execute the **bundler** while in the directory of the project you're bundling.
+
+# Using xgo
+To build your app using xgo you should add 
+`"xgo": {
+      "enabled": true,
+      "deps": ["https://gmplib.org/download/gmp/gmp-6.0.0a.tar.bz2"]
+  }`
+into your `bundler.json`
+
+To install and/or update xgo, simply type:
+`go get -u github.com/karalabe/xgo`
+You can test whether xgo is functioning correctly by requesting it to cross compile itself and verifying that all cross compilations succeeded or not.
+```bash
+$ xgo github.com/karalabe/xgo
+...
+
+$ ls -al
+-rwxr-xr-x  1 root     root      2792436 Sep 14 16:45 xgo-android-21-arm
+-rwxr-xr-x  1 root     root      2353212 Sep 14 16:45 xgo-darwin-386
+-rwxr-xr-x  1 root     root      2906128 Sep 14 16:45 xgo-darwin-amd64
+-rwxr-xr-x  1 root     root      2388288 Sep 14 16:45 xgo-linux-386
+-rwxr-xr-x  1 root     root      2960560 Sep 14 16:45 xgo-linux-amd64
+-rwxr-xr-x  1 root     root      2437864 Sep 14 16:45 xgo-linux-arm
+-rwxr-xr-x  1 root     root      2551808 Sep 14 16:45 xgo-windows-386.exe
+-rwxr-xr-x  1 root     root      3130368 Sep 14 16:45 xgo-windows-amd64.exe
+```
 
 # Usage
 

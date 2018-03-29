@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"runtime"
+
 	"github.com/akavel/rsrc/rsrc"
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
@@ -58,6 +60,9 @@ type Configuration struct {
 	// The path where the vendor directory will be created/used
 	VendorDirPath string `json:"vendor_dir_path"`
 
+	// Configuration for compiling via xgo
+	XGO ConfigurationXGO `json:"xgo"`
+
 	//!\\ DEBUG ONLY
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
 }
@@ -69,6 +74,12 @@ type ConfigurationEnvironment struct {
 	OS                   string            `json:"os"`
 }
 
+// ConfigurationXGO represents the bundle xgo configuration
+type ConfigurationXGO struct {
+	Enabled bool     `json:"enabled"`
+	Deps    []string `json:"deps"`
+}
+
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
 	appName         string
@@ -76,6 +87,7 @@ type Bundler struct {
 	Client          *http.Client
 	ctx             context.Context
 	environments    []ConfigurationEnvironment
+	xgo             ConfigurationXGO
 	pathAstilectron string
 	pathBuild       string
 	pathCache       string
@@ -112,6 +124,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 		appName:      c.AppName,
 		Client:       &http.Client{},
 		environments: c.Environments,
+		xgo:          c.XGO,
 	}
 
 	// Add context
@@ -394,6 +407,12 @@ func (l ldflags) string() string {
 
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
+	// flag indicates if we should use xgo for building
+	var useXGO bool
+	if b.xgo.Enabled && (runtime.GOOS != e.OS || runtime.GOARCH != e.Arch) {
+		useXGO = true
+	}
+
 	// Remove previous environment folder
 	var environmentPath = filepath.Join(b.pathOutput, e.OS+"-"+e.Arch)
 	astilog.Debugf("Removing %s", environmentPath)
@@ -438,16 +457,25 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
-	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
-	cmd.Env = []string{
-		"GOARCH=" + e.Arch,
-		"GOOS=" + e.OS,
-		"GOPATH=" + os.Getenv("GOPATH"),
-		"GOROOT=" + os.Getenv("GOROOT"),
-		"PATH=" + os.Getenv("PATH"),
-		"TEMP=" + os.Getenv("TEMP"),
-		"TAGS=" + os.Getenv("TAGS"),
+	var binaryName = "binary"
+	var binaryPath = filepath.Join(environmentPath, binaryName)
+	var cmd *exec.Cmd
+
+	// if we build for current machine or xgo is disabled - use ordinary go build
+	// else use xgo https://github.com/karalabe/xgo
+	if useXGO {
+		cmd = exec.Command("xgo", "--deps", strings.Join(b.xgo.Deps, " "), "--targets", e.OS+"/"+e.Arch, "--dest", environmentPath, "--out", binaryName, "-ldflags", l.string(), b.pathInput)
+	} else {
+		cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
+		cmd.Env = []string{
+			"GOARCH=" + e.Arch,
+			"GOOS=" + e.OS,
+			"GOPATH=" + os.Getenv("GOPATH"),
+			"GOROOT=" + os.Getenv("GOROOT"),
+			"PATH=" + os.Getenv("PATH"),
+			"TEMP=" + os.Getenv("TEMP"),
+			"TAGS=" + os.Getenv("TAGS"),
+		}
 	}
 
 	if e.EnvironmentVariables != nil {
@@ -462,6 +490,26 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	if o, err = cmd.CombinedOutput(); err != nil {
 		err = errors.Wrapf(err, "building failed: %s", o)
 		return
+	}
+
+	if useXGO {
+		astilog.Debug("Searching for binary produced by xgo")
+		// Search for file binary
+		// xgo names output files by himself. The only option we can set is prefix. So we must find file with such prefix
+		var files []os.FileInfo
+		files, err = ioutil.ReadDir(environmentPath)
+		if err != nil {
+			err = errors.Wrapf(err, "unable to find binary: %s", binaryName)
+			return
+		}
+		for _, f := range files {
+			if strings.HasPrefix(f.Name(), binaryName) {
+				binaryPath = filepath.Join(environmentPath, f.Name())
+				astilog.Debugf("Found binary produced by xgo - %s", binaryPath)
+				break
+			}
+		}
+
 	}
 
 	// Finish bundle based on OS
