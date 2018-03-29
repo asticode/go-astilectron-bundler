@@ -407,12 +407,11 @@ func (l ldflags) string() string {
 
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
-	// flag indicates if bundling for current computer os and arch
-	var buildForCurrentMachine, useXGO bool
-	if runtime.GOOS == e.OS && runtime.GOARCH == e.Arch {
-		buildForCurrentMachine = true
+	// flag indicates if we should use xgo for building
+	var useXGO bool
+	if b.xgo.Enabled && (runtime.GOOS != e.OS || runtime.GOARCH != e.Arch) {
+		useXGO = true
 	}
-	useXGO = buildForCurrentMachine || !b.xgo.Enabled
 
 	// Remove previous environment folder
 	var environmentPath = filepath.Join(b.pathOutput, e.OS+"-"+e.Arch)
@@ -464,7 +463,9 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// if we build for current machine or xgo is disabled - use ordinary go build
 	// else use xgo https://github.com/karalabe/xgo
-	if !useXGO {
+	if useXGO {
+		cmd = exec.Command("xgo", "--deps", strings.Join(b.xgo.Deps, " "), "--targets", e.OS+"/"+e.Arch, "--dest", environmentPath, "--out", binaryName, "-ldflags", l.string(), b.pathInput)
+	} else {
 		cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
 		cmd.Env = []string{
 			"GOARCH=" + e.Arch,
@@ -475,8 +476,6 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 			"TEMP=" + os.Getenv("TEMP"),
 			"TAGS=" + os.Getenv("TAGS"),
 		}
-	} else {
-		cmd = exec.Command("xgo", "--deps", strings.Join(b.xgo.Deps, " "), "--targets", e.OS+"/"+e.Arch, "--dest", environmentPath, "--out", binaryName, "-ldflags", l.string(), b.pathInput)
 	}
 
 	if e.EnvironmentVariables != nil {
@@ -494,6 +493,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	}
 
 	if useXGO {
+		astilog.Debug("Searching for binary produced by xgo")
 		// Search for file binary
 		// xgo names output files by himself. The only option we can set is prefix. So we must find file with such prefix
 		var files []os.FileInfo
@@ -505,9 +505,11 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		for _, f := range files {
 			if strings.HasPrefix(f.Name(), binaryName) {
 				binaryPath = filepath.Join(environmentPath, f.Name())
+				astilog.Debugf("Found binary produced by xgo - %s", binaryPath)
 				break
 			}
 		}
+
 	}
 
 	// Finish bundle based on OS
