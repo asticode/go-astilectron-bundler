@@ -408,10 +408,11 @@ func (l ldflags) string() string {
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// flag indicates if bundling for current computer os and arch
-	var buildForCurrentMachine bool
+	var buildForCurrentMachine, useXGO bool
 	if runtime.GOOS == e.OS && runtime.GOARCH == e.Arch {
 		buildForCurrentMachine = true
 	}
+	useXGO = buildForCurrentMachine || !b.xgo.Enabled
 
 	// Remove previous environment folder
 	var environmentPath = filepath.Join(b.pathOutput, e.OS+"-"+e.Arch)
@@ -463,7 +464,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// if we build for current machine or xgo is disabled - use ordinary go build
 	// else use xgo https://github.com/karalabe/xgo
-	if buildForCurrentMachine || !b.xgo.Enabled {
+	if !useXGO {
 		cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
 		cmd.Env = []string{
 			"GOARCH=" + e.Arch,
@@ -492,7 +493,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		return
 	}
 
-	if !buildForCurrentMachine {
+	if useXGO {
 		// Search for file binary
 		// xgo names output files by himself. The only option we can set is prefix. So we must find file with such prefix
 		var files []os.FileInfo
