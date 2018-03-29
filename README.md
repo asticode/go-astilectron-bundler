@@ -28,6 +28,10 @@ Run the following command:
       }
     }
   ],
+  "xgo": {
+      "enabled": true,
+      "deps": ["https://gmplib.org/download/gmp/gmp-6.0.0a.tar.bz2"]
+  },
   "icon_path_darwin": "path/to/icon.icns",
   "icon_path_linux": "path/to/icon.png",
   "icon_path_windows": "path/to/icon.ico",
