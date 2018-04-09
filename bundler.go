@@ -41,6 +41,8 @@ type Configuration struct {
 	IconPathLinux   string `json:"icon_path_linux"`
 	IconPathWindows string `json:"icon_path_windows"` // .ico
 
+	HideLSUIElement bool `json:"hide_lsui_element"` // osx/macOS LSUIElement
+
 	// The path of the project.
 	// Best is to leave it empty and execute the bundler while in the project folder
 	InputPath string `json:"input_path"`
@@ -76,6 +78,7 @@ type Bundler struct {
 	Client          *http.Client
 	ctx             context.Context
 	environments    []ConfigurationEnvironment
+	hideLSUIElement bool
 	pathAstilectron string
 	pathBuild       string
 	pathCache       string
@@ -155,6 +158,9 @@ func New(c *Configuration) (b *Bundler, err error) {
 	if b.pathInput, err = absPath(c.InputPath, os.Getwd); err != nil {
 		return
 	}
+
+	// Hide LSUIElement (osx/macOS only)
+	b.hideLSUIElement = c.HideLSUIElement
 
 	// Paths that depends on the input path
 	for _, i := range filepath.SplitList(os.Getenv("GOPATH")) {
@@ -536,6 +542,12 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Add Info.plist file
 	var fp = filepath.Join(contentsPath, "Info.plist")
 	astilog.Debugf("Adding Info.plist to %s", fp)
+	var hideLSUIElementAsString string
+	if b.hideLSUIElement {
+		hideLSUIElementAsString = "YES"
+	} else {
+		hideLSUIElementAsString = "NO"
+	}
 	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
@@ -549,6 +561,8 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		<string>`+b.appName+`</string>
 		<key>CFBundleIdentifier</key>
 		<string>com.`+b.appName+`</string>
+		<key>LSUIElement</key>
+		<string>`+hideLSUIElementAsString+`</string>
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
