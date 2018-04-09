@@ -32,6 +32,8 @@ type Configuration struct {
 	// Best is to leave it empty.
 	CachePath string `json:"cache_path"`
 
+	DarwinAgentApp bool `json:"darwin_agent_app"`
+
 	// List of environments the bundling should be done upon.
 	// An environment is a combination of OS and ARCH
 	Environments []ConfigurationEnvironment `json:"environments"`
@@ -75,6 +77,7 @@ type Bundler struct {
 	cancel          context.CancelFunc
 	Client          *http.Client
 	ctx             context.Context
+	darwinAgentApp  bool
 	environments    []ConfigurationEnvironment
 	pathAstilectron string
 	pathBuild       string
@@ -109,9 +112,10 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 func New(c *Configuration) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
-		appName:      c.AppName,
-		Client:       &http.Client{},
-		environments: c.Environments,
+		appName:        c.AppName,
+		Client:         &http.Client{},
+		environments:   c.Environments,
+		darwinAgentApp: c.DarwinAgentApp,
 	}
 
 	// Add context
@@ -536,6 +540,10 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Add Info.plist file
 	var fp = filepath.Join(contentsPath, "Info.plist")
 	astilog.Debugf("Adding Info.plist to %s", fp)
+	lsuiElement := "NO"
+	if b.darwinAgentApp {
+		lsuiElement = "YES"
+	}
 	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
@@ -549,6 +557,8 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		<string>`+b.appName+`</string>
 		<key>CFBundleIdentifier</key>
 		<string>com.`+b.appName+`</string>
+		<key>LSUIElement</key>
+		<string>`+lsuiElement+`</string>
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
