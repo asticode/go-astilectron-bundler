@@ -541,7 +541,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	var fp = filepath.Join(contentsPath, "Info.plist")
 	astilog.Debugf("Adding Info.plist to %s", fp)
 	lsuiElement := "NO"
-	if b.hideLSUIElement {
+	if b.darwinAgentApp {
 		lsuiElement = "YES"
 	}
 	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
