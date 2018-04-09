@@ -32,6 +32,8 @@ type Configuration struct {
 	// Best is to leave it empty.
 	CachePath string `json:"cache_path"`
 
+	DarwinAgentApp bool `json:"darwin_agent_app"`
+
 	// List of environments the bundling should be done upon.
 	// An environment is a combination of OS and ARCH
 	Environments []ConfigurationEnvironment `json:"environments"`
@@ -40,8 +42,6 @@ type Configuration struct {
 	IconPathDarwin  string `json:"icon_path_darwin"` // .icns
 	IconPathLinux   string `json:"icon_path_linux"`
 	IconPathWindows string `json:"icon_path_windows"` // .ico
-
-	HideLSUIElement bool `json:"hide_lsui_element"` // osx/macOS LSUIElement
 
 	// The path of the project.
 	// Best is to leave it empty and execute the bundler while in the project folder
@@ -77,8 +77,8 @@ type Bundler struct {
 	cancel          context.CancelFunc
 	Client          *http.Client
 	ctx             context.Context
+	darwinAgentApp  bool
 	environments    []ConfigurationEnvironment
-	hideLSUIElement bool
 	pathAstilectron string
 	pathBuild       string
 	pathCache       string
@@ -112,9 +112,10 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 func New(c *Configuration) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
-		appName:      c.AppName,
-		Client:       &http.Client{},
-		environments: c.Environments,
+		appName:        c.AppName,
+		Client:         &http.Client{},
+		environments:   c.Environments,
+		darwinAgentApp: c.DarwinAgentApp,
 	}
 
 	// Add context
@@ -158,9 +159,6 @@ func New(c *Configuration) (b *Bundler, err error) {
 	if b.pathInput, err = absPath(c.InputPath, os.Getwd); err != nil {
 		return
 	}
-
-	// Hide LSUIElement (osx/macOS only)
-	b.hideLSUIElement = c.HideLSUIElement
 
 	// Paths that depends on the input path
 	for _, i := range filepath.SplitList(os.Getenv("GOPATH")) {
@@ -542,11 +540,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Add Info.plist file
 	var fp = filepath.Join(contentsPath, "Info.plist")
 	astilog.Debugf("Adding Info.plist to %s", fp)
-	var hideLSUIElementAsString string
+	lsuiElement := "NO"
 	if b.hideLSUIElement {
-		hideLSUIElementAsString = "YES"
-	} else {
-		hideLSUIElementAsString = "NO"
+		lsuiElement = "YES"
 	}
 	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -562,7 +558,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		<key>CFBundleIdentifier</key>
 		<string>com.`+b.appName+`</string>
 		<key>LSUIElement</key>
-		<string>`+hideLSUIElementAsString+`</string>
+		<string>`+lsuiElement+`</string>
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
