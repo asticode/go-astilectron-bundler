@@ -7,6 +7,12 @@ Check out the [demo](https://github.com/asticode/go-astilectron-demo) to see a w
 Run the following command:
 
     $ go get -u github.com/asticode/go-astilectron-bundler/...
+
+# Build the binary
+    
+Run the following command:
+
+    $ go install github.com/asticode/go-astilectron-bundler/astilectron-bundler
     
 # Configuration
 
