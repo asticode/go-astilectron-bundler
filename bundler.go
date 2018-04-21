@@ -227,7 +227,7 @@ func (b *Bundler) ClearCache() (err error) {
 func (b *Bundler) Bundle() (err error) {
 	// Reset
 	astilog.Debug("Resetting")
-	if err = b.reset(); err != nil {
+	if err = b.Reset(); err != nil {
 		err = errors.Wrap(err, "resetting bundler failed")
 		return
 	}
@@ -243,8 +243,8 @@ func (b *Bundler) Bundle() (err error) {
 	return
 }
 
-// reset resets the bundler
-func (b *Bundler) reset() (err error) {
+// Reset resets the bundler
+func (b *Bundler) Reset() (err error) {
 	// Make sure the minimal paths exist
 	for _, path := range []string{b.pathCache, b.pathOutput} {
 		astilog.Debugf("Creating %s", path)
