@@ -86,12 +86,6 @@ func main() {
 	// Switch on subcommand
 	switch s {
 	case "bd":
-		// Reset
-		if err = b.Reset(); err != nil {
-			err = errors.Wrap(err, "resetting bundler failed")
-			return
-		}
-
 		// Bind Data
 		for _, env := range c.Environments {
 			if err = b.BindData(env.OS, env.Arch); err != nil {

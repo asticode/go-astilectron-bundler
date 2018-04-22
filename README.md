@@ -16,11 +16,29 @@ Run the following command:
     
 # Configuration
 
-**astilectron-bundler** uses a configuration file to know what it's supposed to do. Here's an example:
+**astilectron-bundler** uses a configuration file to know what it's supposed to do.
+ 
+## Basic configuration
+
+Here's the basic configuration you'll usually need:
 
 ```json
 {
   "app_name": "Test",
+  "icon_path_darwin": "path/to/icon.icns",
+  "icon_path_linux": "path/to/icon.png",
+  "icon_path_windows": "path/to/icon.ico"
+}
+```
+
+It will process the project located in the current directory and bundle it in the `output` dir for your os/arch.
+
+## Bundle for other environments
+
+You can bundle your project for multiple environments with the `environments` key:
+
+```json
+{
   "environments": [
     {"arch": "amd64", "os": "darwin"},
     {"arch": "amd64", "os": "linux"},
@@ -33,20 +51,43 @@ Run the following command:
         "CGO_ENABLED": "1"
       }
     }
-  ],
-  "icon_path_darwin": "path/to/icon.icns",
-  "icon_path_linux": "path/to/icon.png",
-  "icon_path_windows": "path/to/icon.ico",
-  "input_path": "path/to/src/github.com/username/project",
-  "output_path": "path/to/output/directory"
+  ]
 }
 ```
 
-Paths can be either relative or absolute but we **strongly** encourage to use relative paths.
+For each environment you can specify environment variables with the `env` key.
 
-If no input path is specified, the working directory path is used.
+## Adapt resources
 
-We **strongly** encourage to leave the input path option empty and execute the **bundler** while in the directory of the project you're bundling.
+You can execute custom actions on your resources before binding them to the binary such as uglifying the `.js` files with the `resources_adapters` key:
+
+```json
+{
+  "resources_adapters": [
+    {
+      "args": ["myfile.js", "mynewfile.js"],
+      "name": "mv"
+    },
+    {
+      "args": ["-flag", "value", "mynewfile.js"],
+      "name": "myawesomebinary"
+    }
+  ]
+}
+```
+
+All paths must be relative to the `resources` folder.
+
+## Custom paths
+
+You can set the following paths:
+
+- `input_path`: path to your project. defaults to the current directory
+- `go_binary_path`: path to the `go` binary. defaults to "go"
+- `output_path`: path to the dir where you'll find the bundle results. defaults to `current directory/output`
+- `resources_path`: path where the `resources` dir is and will be written. path must be relative to the `input_path`. defaults to "resources"
+- `vendor_dir_path`: path where the `vendor` dir will be written. path must be relative to the `output_path`
+- `working_directory_path`: path to the dir where the bundler runs its operations such as provisioning the vendor files or binding data to the binary
 
 # Usage
 
