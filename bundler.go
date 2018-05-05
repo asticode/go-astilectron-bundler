@@ -16,8 +16,8 @@ import (
 	"github.com/akavel/rsrc/rsrc"
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
+	"github.com/asticode/go-astitools/archive"
 	"github.com/asticode/go-astitools/os"
-	"github.com/asticode/go-astitools/zip"
 	"github.com/asticode/go-bindata"
 	"github.com/pkg/errors"
 )
@@ -485,7 +485,7 @@ func (b *Bundler) provisionVendorAstilectron() (err error) {
 	if len(b.pathAstilectron) > 0 {
 		// Zip
 		astilog.Debugf("Zipping %s into %s", b.pathAstilectron, p)
-		if err = astizip.Zip(b.ctx, b.pathAstilectron, p, fmt.Sprintf("astilectron-%s", astilectron.VersionAstilectron)); err != nil {
+		if err = astiarchive.Zip(b.ctx, b.pathAstilectron, p, fmt.Sprintf("astilectron-%s", astilectron.VersionAstilectron)); err != nil {
 			err = errors.Wrapf(err, "zipping %s into %s failed", b.pathAstilectron, p)
 			return
 		}
