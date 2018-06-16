@@ -19,6 +19,7 @@ var (
 	configurationPath = flag.String("c", "", "the configuration path")
 	darwin            = flag.Bool("d", false, "if set, will add darwin/amd64 to the environments")
 	linux             = flag.Bool("l", false, "if set, will add linux/amd64 to the environments")
+	outputPath        = flag.String("o", "", "the output path")
 	windows           = flag.Bool("w", false, "if set, will add windows/amd64 to the environments")
 )
 
@@ -60,15 +61,20 @@ func main() {
 		c.AstilectronPath = *astilectronPath
 	}
 
+	// Output path
+	if len(*outputPath) > 0 {
+		c.OutputPath = *outputPath
+	}
+
 	// Environments
 	if *darwin {
-		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "darwin"})
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: runtime.GOARCH, OS: "darwin"})
 	}
 	if *linux {
-		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "linux"})
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: runtime.GOARCH, OS: "linux"})
 	}
 	if *windows {
-		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: "amd64", OS: "windows"})
+		c.Environments = append(c.Environments, astibundler.ConfigurationEnvironment{Arch: runtime.GOARCH, OS: "windows"})
 	}
 	if len(c.Environments) == 0 {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
