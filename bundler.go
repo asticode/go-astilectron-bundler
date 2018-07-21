@@ -3,6 +3,7 @@ package astibundler
 import (
 	"context"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -326,6 +327,12 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		l["H"] = []string{"windowsgui"}
 	}
 
+	// Get gopath
+	gp := os.Getenv("GOPATH")
+	if len(gp) == 0 {
+		gp = build.Default.GOPATH
+	}
+
 	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
@@ -333,7 +340,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
-		"GOPATH=" + os.Getenv("GOPATH"),
+		"GOPATH=" + gp,
 		"GOROOT=" + os.Getenv("GOROOT"),
 		"PATH=" + os.Getenv("PATH"),
 		"TEMP=" + os.Getenv("TEMP"),
