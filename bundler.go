@@ -345,6 +345,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
+		"GOCACHE=" + os.Getenv("GOCACHE"),
 		"GOPATH=" + gp,
 		"GOROOT=" + os.Getenv("GOROOT"),
 		"PATH=" + os.Getenv("PATH"),
