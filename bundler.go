@@ -193,6 +193,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 		}
 	}
 
+	// If build path is empty, ldflags are not set properly
+	if len(b.pathBuild) == 0 {
+		b.pathBuild = "."
+	}
+
 	// Resources path
 	if b.pathResources = c.ResourcesPath; len(b.pathResources) == 0 {
 		b.pathResources = "resources"
