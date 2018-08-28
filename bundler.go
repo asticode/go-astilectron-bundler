@@ -645,6 +645,8 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		<string>com.`+b.appName+`</string>
 		<key>LSUIElement</key>
 		<string>`+lsuiElement+`</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
 	</dict>
 </plist>`), 0777); err != nil {
 		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
