@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-astitools/flag"
 	"github.com/pkg/errors"
+	"github.com/yukuan1988/go-astilectron-bundler"
 )
 
 // Flags

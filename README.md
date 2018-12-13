@@ -76,7 +76,7 @@ You can execute custom actions on your resources before binding them to the bina
 }
 ```
 
-All paths must be relative to the `resources` folder.
+All paths must be relative to the `resources` folder. You can also add a `cwd` to each adapter to specify the directory you want, it's also relative to `resources`.
 
 ## Custom paths
 
