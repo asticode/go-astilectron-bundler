@@ -76,7 +76,7 @@ You can execute custom actions on your resources before binding them to the bina
 }
 ```
 
-All paths must be relative to the `resources` folder.
+All paths must be relative to the `resources` folder except if you provide a `dir` option (a path relative to the `resources` folder) in which case it will be relative to that path.
 
 ## Custom paths
 
