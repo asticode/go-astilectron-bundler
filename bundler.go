@@ -84,6 +84,7 @@ type ConfigurationEnvironment struct {
 
 type ConfigurationResourcesAdapter struct {
 	Args []string `json:"args"`
+	Dir  string   `json:"dir"`
 	Name string   `json:"name"`
 }
 
@@ -543,9 +544,12 @@ func (b *Bundler) adaptResources() (err error) {
 		// Create cmd
 		cmd := exec.CommandContext(b.ctx, a.Name, a.Args...)
 		cmd.Dir = o
+		if a.Dir != "" {
+			cmd.Dir = filepath.Join(o, a.Dir)
+		}
 
 		// Run
-		astilog.Debugf("Running %s", strings.Join(cmd.Args, " "))
+		astilog.Debugf("Running %s in directory %s", strings.Join(cmd.Args, " "), cmd.Dir)
 		var b []byte
 		if b, err = cmd.CombinedOutput(); err != nil {
 			err = errors.Wrapf(err, "running %s failed with output %s", strings.Join(cmd.Args, " "), b)
