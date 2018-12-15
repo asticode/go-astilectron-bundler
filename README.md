@@ -89,6 +89,19 @@ You can set the following paths:
 - `vendor_dir_path`: path where the `vendor` dir will be written. path must be relative to the `output_path`
 - `working_directory_path`: path to the dir where the bundler runs its operations such as provisioning the vendor files or binding data to the binary
 
+## Adapt the bind configuration
+
+You can use the `bind` attribute to alter the bind configuration like so:
+
+```json
+{
+  "bind": {
+    "output_path": "path/to/bind/output/path",
+    "package": "mypkg"
+  }
+}
+```
+
 # Usage
 
 If **astilectron-bundler** has been installed properly (and the $GOPATH is in your $PATH), run the following command:

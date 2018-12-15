@@ -29,6 +29,9 @@ type Configuration struct {
 	// It's also set as an ldflag and therefore accessible in a global var main.AppName
 	AppName string `json:"app_name"`
 
+	// The bind configuration
+	Bind ConfigurationBind `json:"bind"`
+
 	// Whether the app is a darwin agent app
 	DarwinAgentApp bool `json:"darwin_agent_app"`
 
@@ -75,6 +78,16 @@ type Configuration struct {
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
 }
 
+type ConfigurationBind struct {
+	// The path where the file will be written
+	// Defaults to the input path
+	OutputPath string `json:"output_path"`
+
+	// The package of the generated file
+	// Defaults to "main"
+	Package string `json:"package"`
+}
+
 // ConfigurationEnvironment represents the bundle configuration environment
 type ConfigurationEnvironment struct {
 	Arch                 string            `json:"arch"`
@@ -91,13 +104,15 @@ type ConfigurationResourcesAdapter struct {
 // Bundler represents an object capable of bundling an Astilectron app
 type Bundler struct {
 	appName              string
+	bindPackage          string
 	cancel               context.CancelFunc
 	Client               *http.Client
 	ctx                  context.Context
 	darwinAgentApp       bool
 	environments         []ConfigurationEnvironment
 	pathAstilectron      string
-	pathBind             string
+	pathBindInput        string
+	pathBindOutput       string
 	pathBuild            string
 	pathCache            string
 	pathIconDarwin       string
@@ -133,6 +148,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
 		appName:           c.AppName,
+		bindPackage:       c.Bind.Package,
 		Client:            &http.Client{},
 		environments:      c.Environments,
 		darwinAgentApp:    c.DarwinAgentApp,
@@ -162,7 +178,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 	}
 
 	// Paths that depend on the working directory path
-	b.pathBind = filepath.Join(b.pathWorkingDirectory, "bind")
+	b.pathBindInput = filepath.Join(b.pathWorkingDirectory, "bind")
 	b.pathCache = filepath.Join(b.pathWorkingDirectory, "cache")
 
 	// Darwin icon path
@@ -194,6 +210,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 		}
 	}
 
+	// Bind output path
+	if b.pathBindOutput, err = absPath(c.Bind.OutputPath, func() (string, error) { return b.pathInput, nil }); err != nil {
+		return
+	}
+
 	// If build path is empty, ldflags are not set properly
 	if len(b.pathBuild) == 0 {
 		b.pathBuild = "."
@@ -208,7 +229,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 	if b.pathVendor = c.VendorDirPath; len(b.pathVendor) == 0 {
 		b.pathVendor = vendorDirectoryName
 	}
-	b.pathVendor = filepath.Join(b.pathBind, b.pathVendor)
+	b.pathVendor = filepath.Join(b.pathBindInput, b.pathVendor)
 
 	// Go binary path
 	b.pathGoBinary = "go"
@@ -226,6 +247,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 		return p, err
 	}); err != nil {
 		return
+	}
+
+	// Bind package
+	if len(b.bindPackage) == 0 {
+		b.bindPackage = "main"
 	}
 	return
 }
@@ -402,8 +428,8 @@ func (b *Bundler) resetDir(p string) (err error) {
 // BindData binds the data
 func (b *Bundler) BindData(os, arch string) (err error) {
 	// Reset bind dir
-	if err = b.resetDir(b.pathBind); err != nil {
-		err = errors.Wrapf(err, "resetting dir %s failed", b.pathBind)
+	if err = b.resetDir(b.pathBindInput); err != nil {
+		err = errors.Wrapf(err, "resetting dir %s failed", b.pathBindInput)
 		return
 	}
 
@@ -421,9 +447,10 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 
 	// Build bindata config
 	var c = bindata.NewConfig()
-	c.Input = []bindata.InputConfig{{Path: b.pathBind, Recursive: true}}
-	c.Output = filepath.Join(b.pathInput, fmt.Sprintf("bind_%s_%s.go", os, arch))
-	c.Prefix = b.pathBind
+	c.Input = []bindata.InputConfig{{Path: b.pathBindInput, Recursive: true}}
+	c.Output = filepath.Join(b.pathBindOutput, fmt.Sprintf("bind_%s_%s.go", os, arch))
+	c.Package = b.bindPackage
+	c.Prefix = b.pathBindInput
 	c.Tags = fmt.Sprintf("%s,%s", os, arch)
 
 	// Bind data
@@ -519,7 +546,7 @@ func (b *Bundler) provisionVendorElectron(oS, arch string) error {
 
 func (b *Bundler) adaptResources() (err error) {
 	// Create dir
-	var o = filepath.Join(b.pathBind, b.pathResources)
+	var o = filepath.Join(b.pathBindInput, b.pathResources)
 	astilog.Debugf("Creating %s", o)
 	if err = os.MkdirAll(o, 0755); err != nil {
 		err = errors.Wrapf(err, "mkdirall %s failed", o)
