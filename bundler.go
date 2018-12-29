@@ -661,7 +661,8 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	if b.darwinAgentApp {
 		lsuiElement = "YES"
 	}
-	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	if err = ioutil.WriteFile(fp, []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
 		<key>CFBundleIconFile</key>
