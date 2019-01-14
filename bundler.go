@@ -347,6 +347,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,
 		"GOCACHE=" + os.Getenv("GOCACHE"),
+		"GOFLAGS=" + os.Getenv("GOFLAGS"),
 		"GOPATH=" + gp,
 		"GOROOT=" + os.Getenv("GOROOT"),
 		"PATH=" + os.Getenv("PATH"),
