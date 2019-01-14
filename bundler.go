@@ -76,6 +76,9 @@ type Configuration struct {
 
 	//!\\ DEBUG ONLY
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
+
+	// LDFlags to pass through to go build
+	LDFlags LDFlags `json:"ldflags"`
 }
 
 type ConfigurationBind struct {
@@ -110,6 +113,7 @@ type Bundler struct {
 	ctx                  context.Context
 	darwinAgentApp       bool
 	environments         []ConfigurationEnvironment
+	ldflags              LDFlags
 	pathAstilectron      string
 	pathBindInput        string
 	pathBindOutput       string
@@ -153,6 +157,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 		environments:      c.Environments,
 		darwinAgentApp:    c.DarwinAgentApp,
 		resourcesAdapters: c.ResourcesAdapters,
+		ldflags:           c.LDFlags,
 	}
 
 	// Add context
@@ -305,24 +310,6 @@ func (b *Bundler) Bundle() (err error) {
 	return
 }
 
-// ldflags represents ldflags
-type ldflags map[string][]string
-
-// string returns the ldflags as a string
-func (l ldflags) string() string {
-	var o []string
-	for k, ss := range l {
-		if len(ss) == 0 {
-			o = append(o, "-"+k)
-			continue
-		}
-		for _, s := range ss {
-			o = append(o, fmt.Sprintf(`-%s %s`, k, s))
-		}
-	}
-	return strings.Join(o, " ")
-}
-
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Bind data
@@ -347,17 +334,17 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		return
 	}
 
-	// Build ldflags
-	var l = ldflags{
-		"s": []string{},
+	std := LDFlags{
 		"X": []string{
 			`"main.AppName=` + b.appName + `"`,
 			`"main.BuiltAt=` + time.Now().String() + `"`,
 		},
 	}
 	if e.OS == "windows" {
-		l["H"] = []string{"windowsgui"}
+		std["H"] = []string{"windowsgui"}
 	}
+
+	b.ldflags.merge(std)
 
 	// Get gopath
 	gp := os.Getenv("GOPATH")
@@ -368,7 +355,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", l.string(), "-o", binaryPath, b.pathBuild)
+	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", b.ldflags.String(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = []string{
 		"GOARCH=" + e.Arch,
 		"GOOS=" + e.OS,

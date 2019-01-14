@@ -123,6 +123,16 @@ For each environment you specify in your configuration file, **astilectron-bundl
 - `AppName`:  filled with the configuration app name
 - `BuiltAt`: filled with the date the build has been done at
 
+If you need to add more flags yourself, like for a version number, add something
+like this to your `astilectron-bundler` command: `-ldflags X:main.Version=xyzzy`.
+
+If you need to add multiple flags you can pass `-ldflags` multiple times, with
+multiple values split on commas, like this:
+
+`-ldflags X:main.Version=xyzzy,main.CommitCount=100 -ldflags race`
+
+That would set two variables and enable the race detection.
+
 # Subcommands
 ## Only bind data: bd
 
