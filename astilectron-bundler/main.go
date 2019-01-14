@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var ldflags = LDFlags{}
+
 // Flags
 var (
 	astilectronPath   = flag.String("a", "", "the astilectron path")
@@ -22,6 +24,10 @@ var (
 	outputPath        = flag.String("o", "", "the output path")
 	windows           = flag.Bool("w", false, "if set, will add windows/amd64 to the environments")
 )
+
+func init() {
+	flag.Var(ldflags, "ldflags", "extra values to concatenate onto -ldflags, eg X:main.Version=1.0.7")
+}
 
 func main() {
 	// Init
@@ -79,6 +85,8 @@ func main() {
 	if len(c.Environments) == 0 {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
 	}
+
+	c.LDFlags = astibundler.LDFlags(ldflags)
 
 	// Build bundler
 	var b *astibundler.Bundler
