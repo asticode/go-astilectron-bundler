@@ -309,7 +309,6 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	}
 
 	std := LDFlags{
-		"s": []string{},
 		"X": []string{
 			`"main.AppName=` + b.appName + `"`,
 			`"main.BuiltAt=` + time.Now().String() + `"`,
