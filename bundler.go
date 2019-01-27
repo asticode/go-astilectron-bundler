@@ -79,6 +79,9 @@ type Configuration struct {
 
 	// LDFlags to pass through to go build
 	LDFlags LDFlags `json:"ldflags"`
+
+	// The path to application manifest file (WINDOWS ONLY)
+	ManifestPath string `json:"manifest_path"`
 }
 
 type ConfigurationBind struct {
@@ -128,6 +131,7 @@ type Bundler struct {
 	pathResources        string
 	pathVendor           string
 	pathWorkingDirectory string
+	pathManifest         string
 	resourcesAdapters    []ConfigurationResourcesAdapter
 }
 
@@ -198,6 +202,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 
 	// Windows icon path
 	if b.pathIconWindows, err = absPath(c.IconPathWindows, nil); err != nil {
+		return
+	}
+
+	// Windows application manifest path
+	if b.pathManifest, err = absPath(c.ManifestPath, nil); err != nil {
 		return
 	}
 
@@ -576,10 +585,10 @@ func (b *Bundler) adaptResources() (err error) {
 
 // addWindowsSyso adds the proper windows .syso if needed
 func (b *Bundler) addWindowsSyso(arch string) (err error) {
-	if len(b.pathIconWindows) > 0 {
+	if len(b.pathIconWindows) > 0 || len(b.pathManifest) > 0 {
 		var p = filepath.Join(b.pathInput, "windows.syso")
 		astilog.Debugf("Running rsrc for icon %s into %s", b.pathIconWindows, p)
-		if err = rsrc.Embed(p, arch, "", b.pathIconWindows); err != nil {
+		if err = rsrc.Embed(p, arch, b.pathManifest, b.pathIconWindows); err != nil {
 			err = errors.Wrapf(err, "running rsrc for icon %s into %s failed", b.pathIconWindows, p)
 			return
 		}
