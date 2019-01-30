@@ -102,6 +102,29 @@ You can use the `bind` attribute to alter the bind configuration like so:
 }
 ```
 
+## Info.plist generation from the bundler configuration file property
+You can add custom **Info.plist** configuration to the **bundler.json**:
+```json
+{
+  "app_name": "Best App",
+  "icon_path_darwin": "resources/icon.icns",
+  "info_plist": {
+    "CFBundlePackageType": "APPL",
+    "CFBundleInfoDictionaryVersion": "6.0",
+    "CFBundleIconFile": "icon.icns",
+    "CFBundleDisplayName": "Best App",
+    "CFBundleExecutable": "app_binary",
+    "CFBundleIdentifier": "com.company.BestApp",
+    "LSUIElement": "NO",
+    "LSMinimumSystemVersion": "10.11",
+    "NSHighResolutionCapable": true,
+    "NSAppTransportSecurity": {
+      "NSAllowsArbitraryLoads": true
+    }
+  }
+}
+```
+
 # Usage
 
 If **astilectron-bundler** has been installed properly (and the $GOPATH is in your $PATH), run the following command:
