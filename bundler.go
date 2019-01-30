@@ -21,6 +21,7 @@ import (
 	"github.com/asticode/go-astitools/os"
 	"github.com/asticode/go-bindata"
 	"github.com/pkg/errors"
+	"github.com/sam-kamerer/go-plister"
 )
 
 // Configuration represents the bundle configuration
@@ -82,6 +83,9 @@ type Configuration struct {
 
 	// The path to application manifest file (WINDOWS ONLY)
 	ManifestPath string `json:"manifest_path"`
+
+	// Info.plist property list
+	InfoPlist map[string]interface{} `json:"info_plist"`
 }
 
 type ConfigurationBind struct {
@@ -116,6 +120,7 @@ type Bundler struct {
 	ctx                  context.Context
 	darwinAgentApp       bool
 	environments         []ConfigurationEnvironment
+	infoPlist            map[string]interface{}
 	ldflags              LDFlags
 	pathAstilectron      string
 	pathBindInput        string
@@ -162,6 +167,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 		darwinAgentApp:    c.DarwinAgentApp,
 		resourcesAdapters: c.ResourcesAdapters,
 		ldflags:           c.LDFlags,
+		infoPlist:         c.InfoPlist,
 	}
 
 	// Add context
@@ -607,8 +613,18 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		return
 	}
 
-	// Move binary
 	var macOSBinaryPath = filepath.Join(macOSPath, b.appName)
+
+	var infoPlist *plister.InfoPlist
+	if b.infoPlist != nil {
+		infoPlist = plister.MapToInfoPlist(b.infoPlist)
+		binaryName, _ := infoPlist.Get("CFBundleExecutable").(string)
+		if binaryName != "" {
+			macOSBinaryPath = filepath.Join(macOSPath, binaryName)
+		}
+	}
+
+	// Move binary
 	astilog.Debugf("Moving %s to %s", binaryPath, macOSBinaryPath)
 	if err = astios.Move(b.ctx, binaryPath, macOSBinaryPath); err != nil {
 		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, macOSBinaryPath)
@@ -637,8 +653,17 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 			return
 		}
 
+		iconFileName := b.appName + filepath.Ext(b.pathIconDarwin)
+
+		if infoPlist != nil {
+			ifn, _ := infoPlist.Get("CFBundleIconFile").(string)
+			if ifn != "" {
+				iconFileName = ifn
+			}
+		}
+
 		// Copy icon
-		var ip = filepath.Join(resourcesPath, b.appName+filepath.Ext(b.pathIconDarwin))
+		var ip = filepath.Join(resourcesPath, iconFileName)
 		astilog.Debugf("Copying %s to %s", b.pathIconDarwin, ip)
 		if err = astios.Copy(b.ctx, b.pathIconDarwin, ip); err != nil {
 			err = errors.Wrapf(err, "copying %s to %s failed", b.pathIconDarwin, ip)
@@ -654,6 +679,11 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Add Info.plist file
 	var fp = filepath.Join(contentsPath, "Info.plist")
 	astilog.Debugf("Adding Info.plist to %s", fp)
+
+	if infoPlist != nil {
+		return plister.Generate(fp, infoPlist)
+	}
+
 	lsuiElement := "NO"
 	if b.darwinAgentApp {
 		lsuiElement = "YES"
