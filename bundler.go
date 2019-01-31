@@ -681,7 +681,10 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	astilog.Debugf("Adding Info.plist to %s", fp)
 
 	if infoPlist != nil {
-		return plister.Generate(fp, infoPlist)
+		if err = plister.Generate(fp, infoPlist); err != nil {
+			err = errors.Wrap(err, "generating Info.plist failed")
+		}
+		return
 	}
 
 	lsuiElement := "NO"
