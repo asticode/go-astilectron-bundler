@@ -30,7 +30,8 @@ func (l LDFlags) String() string {
 	return strings.Join(o, " ")
 }
 
-func (l LDFlags) merge(r LDFlags) {
+// Merge merges ldflags
+func (l LDFlags) Merge(r LDFlags) {
 	for flag := range r {
 		l[flag] = append(l[flag], r[flag]...)
 	}
