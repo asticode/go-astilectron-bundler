@@ -358,8 +358,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	if e.OS == "windows" {
 		std["H"] = []string{"windowsgui"}
 	}
-
-	b.ldflags.merge(std)
+	b.ldflags.Merge(std)
 
 	// Get gopath
 	gp := os.Getenv("GOPATH")

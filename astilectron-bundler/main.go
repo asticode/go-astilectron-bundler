@@ -86,7 +86,8 @@ func main() {
 		c.Environments = []astibundler.ConfigurationEnvironment{{Arch: runtime.GOARCH, OS: runtime.GOOS}}
 	}
 
-	c.LDFlags = astibundler.LDFlags(ldflags)
+	// Flags
+	c.LDFlags.Merge(astibundler.LDFlags(ldflags))
 
 	// Build bundler
 	var b *astibundler.Bundler
