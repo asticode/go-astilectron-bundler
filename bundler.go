@@ -170,6 +170,11 @@ func New(c *Configuration) (b *Bundler, err error) {
 		infoPlist:         c.InfoPlist,
 	}
 
+	// Ldflags
+	if b.ldflags == nil {
+		b.ldflags = make(LDFlags)
+	}
+
 	// Add context
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 
