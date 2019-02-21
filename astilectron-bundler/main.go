@@ -87,6 +87,9 @@ func main() {
 	}
 
 	// Flags
+	if c.LDFlags == nil {
+		c.LDFlags = astibundler.LDFlags(make(map[string][]string))
+	}
 	c.LDFlags.Merge(astibundler.LDFlags(ldflags))
 
 	// Build bundler
