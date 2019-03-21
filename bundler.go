@@ -45,6 +45,9 @@ type Configuration struct {
 	IconPathLinux   string `json:"icon_path_linux"`
 	IconPathWindows string `json:"icon_path_windows"` // .ico
 
+	//allow keep console on Windows OS
+	KeepWindowsConsole bool `json:"keep_windows_console"`
+
 	// The path of the project.
 	// Defaults to the current directory
 	InputPath string `json:"input_path"`
@@ -138,6 +141,7 @@ type Bundler struct {
 	pathWorkingDirectory string
 	pathManifest         string
 	resourcesAdapters    []ConfigurationResourcesAdapter
+	KeepWindowsConsole   bool
 }
 
 // absPath computes the absolute path
@@ -160,14 +164,15 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 func New(c *Configuration) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
-		appName:           c.AppName,
-		bindPackage:       c.Bind.Package,
-		Client:            &http.Client{},
-		environments:      c.Environments,
-		darwinAgentApp:    c.DarwinAgentApp,
-		resourcesAdapters: c.ResourcesAdapters,
-		ldflags:           c.LDFlags,
-		infoPlist:         c.InfoPlist,
+		appName:            c.AppName,
+		bindPackage:        c.Bind.Package,
+		Client:             &http.Client{},
+		environments:       c.Environments,
+		darwinAgentApp:     c.DarwinAgentApp,
+		resourcesAdapters:  c.ResourcesAdapters,
+		ldflags:            c.LDFlags,
+		infoPlist:          c.InfoPlist,
+		KeepWindowsConsole: c.KeepWindowsConsole,
 	}
 
 	// Ldflags
@@ -360,7 +365,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 			`"main.BuiltAt=` + time.Now().String() + `"`,
 		},
 	}
-	if e.OS == "windows" {
+	if e.OS == "windows" && b.KeepWindowsConsole != true {
 		std["H"] = []string{"windowsgui"}
 	}
 	b.ldflags.Merge(std)

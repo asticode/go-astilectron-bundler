@@ -27,7 +27,8 @@ Here's the basic configuration you'll usually need:
   "app_name": "Test",
   "icon_path_darwin": "path/to/icon.icns",
   "icon_path_linux": "path/to/icon.png",
-  "icon_path_windows": "path/to/icon.ico"
+  "icon_path_windows": "path/to/icon.ico",
+  "keep_windows_console": false
 }
 ```
 
