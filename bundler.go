@@ -375,17 +375,18 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
 	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", b.ldflags.String(), "-o", binaryPath, b.pathBuild)
-	cmd.Env = []string{
-		"GOARCH=" + e.Arch,
-		"GOOS=" + e.OS,
-		"GOCACHE=" + os.Getenv("GOCACHE"),
-		"GOFLAGS=" + os.Getenv("GOFLAGS"),
-		"GOPATH=" + gp,
-		"GOROOT=" + os.Getenv("GOROOT"),
-		"PATH=" + os.Getenv("PATH"),
-		"TEMP=" + os.Getenv("TEMP"),
-		"TAGS=" + os.Getenv("TAGS"),
-	}
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env,
+		"GOARCH="+e.Arch,
+		"GOOS="+e.OS,
+		"GOCACHE="+os.Getenv("GOCACHE"),
+		"GOFLAGS="+os.Getenv("GOFLAGS"),
+		"GOPATH="+gp,
+		"GOROOT="+os.Getenv("GOROOT"),
+		"PATH="+os.Getenv("PATH"),
+		"TEMP="+os.Getenv("TEMP"),
+		"TAGS="+os.Getenv("TAGS"),
+	)
 
 	if e.EnvironmentVariables != nil {
 		for k, v := range e.EnvironmentVariables {
