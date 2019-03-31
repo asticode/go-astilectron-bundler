@@ -363,7 +363,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	if e.OS == "windows" {
 		std["H"] = []string{"windowsgui"}
 	}
-	b.ldflags.Merge(std)
+	std.Merge(b.ldflags)
 
 	// Get gopath
 	gp := os.Getenv("GOPATH")
@@ -374,7 +374,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Build cmd
 	astilog.Debugf("Building for os %s and arch %s", e.OS, e.Arch)
 	var binaryPath = filepath.Join(environmentPath, "binary")
-	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", b.ldflags.String(), "-o", binaryPath, b.pathBuild)
+	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", std.String(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env,
 		"GOARCH="+e.Arch,
