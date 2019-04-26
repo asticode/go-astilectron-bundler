@@ -24,7 +24,7 @@ func (l LDFlags) String() string {
 			continue
 		}
 		for _, s := range ss {
-			o = append(o, fmt.Sprintf(`-%s %s`, k, s))
+			o = append(o, fmt.Sprintf(`-%s "%s"`, k, s))
 		}
 	}
 	return strings.Join(o, " ")

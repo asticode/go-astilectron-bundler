@@ -356,8 +356,8 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	std := LDFlags{
 		"X": []string{
-			`"main.AppName=` + b.appName + `"`,
-			`"main.BuiltAt=` + time.Now().String() + `"`,
+			`main.AppName=` + b.appName,
+			`main.BuiltAt=` + time.Now().String(),
 		},
 	}
 	if e.OS == "windows" {
