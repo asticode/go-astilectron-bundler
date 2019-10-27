@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"github.com/asticode/go-astilectron"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,6 +92,20 @@ func main() {
 		c.LDFlags = astibundler.LDFlags(make(map[string][]string))
 	}
 	c.LDFlags.Merge(astibundler.LDFlags(ldflags))
+
+	if c.VersionElectron == "" {
+		c.VersionElectron = astilectron.DefaultVersionElectron
+		astilog.Debugf("Using VersionElectron - default: %v\n", c.VersionElectron)
+	} else {
+		astilog.Debugf("Using VersionElectron - override: %v\n", c.VersionElectron)
+	}
+
+
+	astilog.Debugf("astilectron.DefaultVersionElectron: %v\n", astilectron.DefaultVersionElectron)
+	astilog.Debugf("c.VersionElectron: %v\n", c.VersionElectron)
+	astilog.Debugf("astilectron.ElectronDownloadSrc: %s\n", astilectron.ElectronDownloadSrc("linux", "x64", c.VersionAstilectron) )
+
+
 
 	// Build bundler
 	var b *astibundler.Bundler
