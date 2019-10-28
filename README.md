@@ -35,9 +35,8 @@ Here's the basic configuration you'll usually need:
 
 It will process the project located in the current directory and bundle it in the `output` dir for your os/arch.
 
-## Bundle Customizations
+## Bundle for specific Astilectron and/or Electron versions
 The following customization can be made to bundler.json. 
-   * app_name - Application executable name.
    * version_electron - version of electron, defaults to `4.0.1`
    * version_astilectron - version of astilectron, defaults to `0.33.0` 
 

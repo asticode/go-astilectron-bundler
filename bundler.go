@@ -87,11 +87,11 @@ type Configuration struct {
 	// Info.plist property list
 	InfoPlist map[string]interface{} `json:"info_plist"`
 
-	// Version of Electron install
-	VersionElectron string `json:"version_electron"`
-
 	// Version of Astilectron install
 	VersionAstilectron string `json:"version_astilectron"`
+
+	// Version of Electron install
+	VersionElectron string `json:"version_electron"`
 }
 
 type ConfigurationBind struct {
@@ -121,8 +121,6 @@ type ConfigurationResourcesAdapter struct {
 type Bundler struct {
 	appName              string
 	bindPackage          string
-	versionElectron      string
-	versionAstilectron   string
 	cancel               context.CancelFunc
 	Client               *http.Client
 	ctx                  context.Context
@@ -146,6 +144,8 @@ type Bundler struct {
 	pathWorkingDirectory string
 	pathManifest         string
 	resourcesAdapters    []ConfigurationResourcesAdapter
+	versionAstilectron   string
+	versionElectron      string
 }
 
 // absPath computes the absolute path
@@ -176,13 +176,20 @@ func New(c *Configuration) (b *Bundler, err error) {
 		resourcesAdapters:  c.ResourcesAdapters,
 		ldflags:            c.LDFlags,
 		infoPlist:          c.InfoPlist,
-		versionElectron:    c.VersionElectron,
-		versionAstilectron: c.VersionAstilectron,
+		versionAstilectron: astilectron.DefaultVersionAstilectron,
+		versionElectron:    astilectron.DefaultVersionElectron,
 	}
 
 	// Ldflags
 	if b.ldflags == nil {
 		b.ldflags = make(LDFlags)
+	}
+
+	if c.VersionAstilectron != "" {
+		b.versionAstilectron = c.VersionAstilectron
+	}
+	if c.VersionElectron != "" {
+		b.versionElectron = c.VersionElectron
 	}
 
 	// Add context
@@ -323,9 +330,6 @@ func (b *Bundler) ClearCache() (err error) {
 // Bundle bundles an astilectron app based on a configuration
 func (b *Bundler) Bundle() (err error) {
 	// Create the output folder
-	astilog.Debugf("Creating %s", b.pathOutput)
-	astilog.Debugf("b.versionElectron %s", b.versionElectron)
-
 	if err = os.MkdirAll(b.pathOutput, 0755); err != nil {
 		err = errors.Wrapf(err, "mkdirall %s failed", b.pathOutput)
 		return
@@ -370,6 +374,8 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		"X": []string{
 			`main.AppName=` + b.appName,
 			`main.BuiltAt=` + time.Now().String(),
+			`main.VersionAstilectron=` + b.versionAstilectron,
+			`main.VersionElectron=` + b.versionElectron,
 		},
 	}
 	if e.OS == "windows" {
@@ -495,11 +501,8 @@ func (b *Bundler) provisionVendor(oS, arch string) (err error) {
 		return
 	}
 
-
-	astilog.Debugf("provisionVendor b.versionElectron %s", b.versionElectron)
-
 	// Provision electron
-	if err = b.provisionVendorElectron(oS, arch, b.versionElectron); err != nil {
+	if err = b.provisionVendorElectron(oS, arch); err != nil {
 		err = errors.Wrapf(err, "provisioning electron vendor for OS %s and arch %s failed", oS, arch)
 		return
 	}
@@ -558,12 +561,10 @@ func (b *Bundler) provisionVendorAstilectron() (err error) {
 }
 
 // provisionVendorElectron provisions the electron vendor zip file
-func (b *Bundler) provisionVendorElectron(oS, arch, versionElectron string) error {
-	astilog.Debugf("provisionVendorElectron versionElectron %s", versionElectron)
-
+func (b *Bundler) provisionVendorElectron(oS, arch string) error {
 	return b.provisionVendorZip(
 		astilectron.ElectronDownloadSrc(oS, arch, b.versionElectron),
-		filepath.Join(b.pathCache, fmt.Sprintf("electron-%s-%s-%s.zip", oS, arch, versionElectron)),
+		filepath.Join(b.pathCache, fmt.Sprintf("electron-%s-%s-%s.zip", oS, arch, b.versionElectron)),
 		filepath.Join(b.pathVendor, zipNameElectron))
 }
 
