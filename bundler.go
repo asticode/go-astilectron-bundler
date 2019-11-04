@@ -17,8 +17,8 @@ import (
 	"github.com/akavel/rsrc/rsrc"
 	"github.com/asticode/go-astilectron"
 	"github.com/asticode/go-astilog"
-	"github.com/asticode/go-astitools/archive"
-	"github.com/asticode/go-astitools/os"
+	astiarchive "github.com/asticode/go-astitools/archive"
+	astios "github.com/asticode/go-astitools/os"
 	"github.com/asticode/go-bindata"
 	"github.com/pkg/errors"
 	"github.com/sam-kamerer/go-plister"
@@ -40,18 +40,27 @@ type Configuration struct {
 	// An environment is a combination of OS and ARCH
 	Environments []ConfigurationEnvironment `json:"environments"`
 
+	// The path of the go binary
+	// Defaults to "go"
+	GoBinaryPath string `json:"go_binary_path"`
+
 	// Paths to icons
 	IconPathDarwin  string `json:"icon_path_darwin"` // .icns
 	IconPathLinux   string `json:"icon_path_linux"`
 	IconPathWindows string `json:"icon_path_windows"` // .ico
 
+	// Info.plist property list
+	InfoPlist map[string]interface{} `json:"info_plist"`
+
 	// The path of the project.
 	// Defaults to the current directory
 	InputPath string `json:"input_path"`
 
-	// The path of the go binary
-	// Defaults to "go"
-	GoBinaryPath string `json:"go_binary_path"`
+	// LDFlags to pass through to go build
+	LDFlags LDFlags `json:"ldflags"`
+
+	// The path to application manifest file (WINDOWS ONLY)
+	ManifestPath string `json:"manifest_path"`
 
 	// The path where the files will be written
 	// Defaults to "output"
@@ -66,10 +75,19 @@ type Configuration struct {
 	// Defaults to "resources"
 	ResourcesPath string `json:"resources_path"`
 
+	// Show Windows console
+	ShowWindowsConsole bool `json:"show_windows_console"`
+
 	// The path where the vendor directory will be created
 	// This path must be relative to the output path
 	// Defaults to a temp directory
 	VendorDirPath string `json:"vendor_dir_path"`
+
+	// Version of Astilectron install
+	VersionAstilectron string `json:"version_astilectron"`
+
+	// Version of Electron install
+	VersionElectron string `json:"version_electron"`
 
 	// The path to the working directory.
 	// Defaults to a temp directory
@@ -77,21 +95,6 @@ type Configuration struct {
 
 	//!\\ DEBUG ONLY
 	AstilectronPath string `json:"astilectron_path"` // when making changes to astilectron
-
-	// LDFlags to pass through to go build
-	LDFlags LDFlags `json:"ldflags"`
-
-	// The path to application manifest file (WINDOWS ONLY)
-	ManifestPath string `json:"manifest_path"`
-
-	// Info.plist property list
-	InfoPlist map[string]interface{} `json:"info_plist"`
-
-	// Version of Astilectron install
-	VersionAstilectron string `json:"version_astilectron"`
-
-	// Version of Electron install
-	VersionElectron string `json:"version_electron"`
 }
 
 type ConfigurationBind struct {
@@ -144,6 +147,7 @@ type Bundler struct {
 	pathWorkingDirectory string
 	pathManifest         string
 	resourcesAdapters    []ConfigurationResourcesAdapter
+	showWindowsConsole   bool
 	versionAstilectron   string
 	versionElectron      string
 }
@@ -176,6 +180,7 @@ func New(c *Configuration) (b *Bundler, err error) {
 		resourcesAdapters:  c.ResourcesAdapters,
 		ldflags:            c.LDFlags,
 		infoPlist:          c.InfoPlist,
+		showWindowsConsole: c.ShowWindowsConsole,
 		versionAstilectron: astilectron.DefaultVersionAstilectron,
 		versionElectron:    astilectron.DefaultVersionElectron,
 	}
@@ -378,7 +383,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 			`main.VersionElectron=` + b.versionElectron,
 		},
 	}
-	if e.OS == "windows" {
+	if e.OS == "windows" && !b.showWindowsConsole {
 		std["H"] = []string{"windowsgui"}
 	}
 	std.Merge(b.ldflags)
@@ -390,7 +395,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	}
 
 	// Build cmd
-	astilog.Debugf("Building for os %s and arch %s astilectron: %s electron: %s", e.OS, e.Arch, b.versionAstilectron, b.versionElectron,)
+	astilog.Debugf("Building for os %s and arch %s astilectron: %s electron: %s", e.OS, e.Arch, b.versionAstilectron, b.versionElectron)
 	var binaryPath = filepath.Join(environmentPath, "binary")
 	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", std.String(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = os.Environ()
