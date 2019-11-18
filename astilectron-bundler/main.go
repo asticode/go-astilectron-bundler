@@ -31,6 +31,7 @@ func init() {
 
 func main() {
 	// Init
+	astilog.SetHandyFlags()
 	var s = astiflag.Subcommand()
 	flag.Parse()
 	astilog.FlagInit()
