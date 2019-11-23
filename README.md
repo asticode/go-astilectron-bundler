@@ -36,7 +36,9 @@ Here's the basic configuration you'll usually need:
 It will process the project located in the current directory and bundle it in the `output` dir for your os/arch.
 
 ## Bundle for specific Astilectron and/or Electron versions
-The following customization can be made to bundler.json. 
+
+The following customization can be made to `bundler.json`
+
    * version_electron - version of electron, defaults to `4.0.1`
    * version_astilectron - version of astilectron, defaults to `0.33.0` 
 
@@ -175,3 +177,17 @@ Use this subcommand if you want to skip most of the bundling process and only bi
 The **bundler** stores downloaded files in a cache to avoid downloading them over and over again. That cache may be corrupted. In that case, use this subcommand to clear the cache:
 
     $ astilectron-bundler cc -v
+    
+# Frequent problems
+## "xxx architecture of input file `xxx' is incompatible with xxx output"
+
+When building for `linux` you may face an error looking like this:
+
+```
+FATA[0009] bundling failed: bundling for environment linux/amd64 failed: building failed: # github.com/asticode/go-astilectron-demo
+/usr/local/go/pkg/tool/linux_amd64/link: running gcc failed: exit status 1
+/usr/bin/ld: i386 architecture of input file `/tmp/go-link-275377070/000000.o' is incompatible with i386:x86-64 output
+collect2: error: ld returned 1 exit status
+```
+
+Thanks to [this comment](https://github.com/asticode/go-astilectron-demo/issues/28#issuecomment-509050603), you need to add the `ldflags` key to your `bundler.json` with the value `{"linkmode":["internal"]}`.
