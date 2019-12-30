@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/asticode/go-astilectron-bundler"
+	"github.com/asticode/go-astikit"
+	astibundler "github.com/asticode/go-astilectron-bundler"
 	"github.com/asticode/go-astilog"
-	"github.com/asticode/go-astitools/flag"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +32,7 @@ func init() {
 func main() {
 	// Init
 	astilog.SetHandyFlags()
-	var s = astiflag.Subcommand()
+	cmd := astikit.FlagCmd()
 	flag.Parse()
 	astilog.FlagInit()
 
@@ -102,8 +102,8 @@ func main() {
 	// Handle signals
 	b.HandleSignals()
 
-	// Switch on subcommand
-	switch s {
+	// Switch on cmd
+	switch cmd {
 	case "bd":
 		// Bind Data
 		for _, env := range c.Environments {
