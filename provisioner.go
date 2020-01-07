@@ -3,6 +3,7 @@ package astibundler
 import (
 	"path/filepath"
 
+	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
 )
 
@@ -14,6 +15,6 @@ const (
 )
 
 // NewProvisioner builds the proper disembedder provisioner
-func NewProvisioner(disembedFunc func(string) ([]byte, error)) astilectron.Provisioner {
-	return astilectron.NewDisembedderProvisioner(disembedFunc, filepath.Join(vendorDirectoryName, zipNameAstilectron), filepath.Join(vendorDirectoryName, zipNameElectron))
+func NewProvisioner(disembedFunc func(string) ([]byte, error), l astikit.StdLogger) astilectron.Provisioner {
+	return astilectron.NewDisembedderProvisioner(disembedFunc, filepath.Join(vendorDirectoryName, zipNameAstilectron), filepath.Join(vendorDirectoryName, zipNameElectron), l)
 }

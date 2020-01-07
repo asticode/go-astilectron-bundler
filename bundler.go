@@ -16,9 +16,7 @@ import (
 	"github.com/akavel/rsrc/rsrc"
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
-	"github.com/asticode/go-astilog"
 	"github.com/asticode/go-bindata"
-	"github.com/pkg/errors"
 	"github.com/sam-kamerer/go-plister"
 )
 
@@ -128,6 +126,7 @@ type Bundler struct {
 	darwinAgentApp       bool
 	environments         []ConfigurationEnvironment
 	infoPlist            map[string]interface{}
+	l                    astikit.SeverityLogger
 	ldflags              LDFlags
 	pathAstilectron      string
 	pathBindInput        string
@@ -154,12 +153,12 @@ type Bundler struct {
 func absPath(configPath string, defaultPathFn func() (string, error)) (o string, err error) {
 	if len(configPath) > 0 {
 		if o, err = filepath.Abs(configPath); err != nil {
-			err = errors.Wrapf(err, "filepath.Abs of %s failed", configPath)
+			err = fmt.Errorf("filepath.Abs of %s failed: %w", configPath, err)
 			return
 		}
 	} else if defaultPathFn != nil {
 		if o, err = defaultPathFn(); err != nil {
-			err = errors.Wrapf(err, "default path function to compute absPath of %s failed", configPath)
+			err = fmt.Errorf("default path function to compute absPath of %s failed: %w", configPath, err)
 			return
 		}
 	}
@@ -167,19 +166,20 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 }
 
 // New builds a new bundler based on a configuration
-func New(c *Configuration) (b *Bundler, err error) {
+func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
 		appName:     c.AppName,
 		bindPackage: c.Bind.Package,
 		d: astikit.NewHTTPDownloader(astikit.HTTPDownloaderOptions{
 			Sender: astikit.HTTPSenderOptions{
-				Logger: astilog.GetLogger(),
+				Logger: l,
 			},
 		}),
 		environments:       c.Environments,
 		darwinAgentApp:     c.DarwinAgentApp,
 		resourcesAdapters:  c.ResourcesAdapters,
+		l:                  astikit.AdaptStdLogger(l),
 		ldflags:            c.LDFlags,
 		infoPlist:          c.InfoPlist,
 		showWindowsConsole: c.ShowWindowsConsole,
@@ -308,10 +308,10 @@ func New(c *Configuration) (b *Bundler, err error) {
 // HandleSignals handles signals
 func (b *Bundler) HandleSignals() {
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGABRT, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+	signal.Notify(ch, syscall.SIGABRT, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go func() {
 		for s := range ch {
-			astilog.Infof("Received signal %s", s)
+			b.l.Infof("Received signal %s", s)
 			b.Stop()
 			return
 		}
@@ -326,9 +326,9 @@ func (b *Bundler) Stop() {
 // ClearCache clears the bundler cache
 func (b *Bundler) ClearCache() (err error) {
 	// Remove cache folder
-	astilog.Debugf("Removing %s", b.pathCache)
+	b.l.Debugf("Removing %s", b.pathCache)
 	if err = os.RemoveAll(b.pathCache); err != nil {
-		err = errors.Wrapf(err, "removing %s failed", b.pathCache)
+		err = fmt.Errorf("removing %s failed: %w", b.pathCache, err)
 		return
 	}
 	return
@@ -338,15 +338,15 @@ func (b *Bundler) ClearCache() (err error) {
 func (b *Bundler) Bundle() (err error) {
 	// Create the output folder
 	if err = os.MkdirAll(b.pathOutput, 0755); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", b.pathOutput)
+		err = fmt.Errorf("mkdirall %s failed: %w", b.pathOutput, err)
 		return
 	}
 
 	// Loop through environments
 	for _, e := range b.environments {
-		astilog.Debugf("Bundling for environment %s/%s", e.OS, e.Arch)
+		b.l.Debugf("Bundling for environment %s/%s", e.OS, e.Arch)
 		if err = b.bundle(e); err != nil {
-			err = errors.Wrapf(err, "bundling for environment %s/%s failed", e.OS, e.Arch)
+			err = fmt.Errorf("bundling for environment %s/%s failed: %w", e.OS, e.Arch, err)
 			return
 		}
 	}
@@ -356,16 +356,16 @@ func (b *Bundler) Bundle() (err error) {
 // bundle bundles an os
 func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Bind data
-	astilog.Debug("Binding data")
+	b.l.Debug("Binding data")
 	if err = b.BindData(e.OS, e.Arch); err != nil {
-		err = errors.Wrap(err, "binding data failed")
+		err = fmt.Errorf("binding data failed: %w", err)
 		return
 	}
 
 	// Add windows .syso
 	if e.OS == "windows" {
 		if err = b.addWindowsSyso(e.Arch); err != nil {
-			err = errors.Wrap(err, "adding windows .syso failed")
+			err = fmt.Errorf("adding windows .syso failed: %w", err)
 			return
 		}
 	}
@@ -373,7 +373,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	// Reset output dir
 	var environmentPath = filepath.Join(b.pathOutput, e.OS+"-"+e.Arch)
 	if err = b.resetDir(environmentPath); err != nil {
-		err = errors.Wrapf(err, "resetting dir %s failed", environmentPath)
+		err = fmt.Errorf("resetting dir %s failed: %w", environmentPath, err)
 		return
 	}
 
@@ -397,7 +397,7 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 	}
 
 	// Build cmd
-	astilog.Debugf("Building for os %s and arch %s astilectron: %s electron: %s", e.OS, e.Arch, b.versionAstilectron, b.versionElectron)
+	b.l.Debugf("Building for os %s and arch %s astilectron: %s electron: %s", e.OS, e.Arch, b.versionAstilectron, b.versionElectron)
 	var binaryPath = filepath.Join(environmentPath, "binary")
 	var cmd = exec.Command(b.pathGoBinary, "build", "-ldflags", std.String(), "-o", binaryPath, b.pathBuild)
 	cmd.Env = os.Environ()
@@ -415,9 +415,9 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	// Exec
 	var o []byte
-	astilog.Debugf("Executing %s", strings.Join(cmd.Args, " "))
+	b.l.Debugf("Executing %s", strings.Join(cmd.Args, " "))
 	if o, err = cmd.CombinedOutput(); err != nil {
-		err = errors.Wrapf(err, "building failed: %s", o)
+		err = fmt.Errorf("building failed: %s", o)
 		return
 	}
 
@@ -437,16 +437,16 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 func (b *Bundler) resetDir(p string) (err error) {
 	// Remove
-	astilog.Debugf("Removing %s", p)
+	b.l.Debugf("Removing %s", p)
 	if err = os.RemoveAll(p); err != nil {
-		err = errors.Wrapf(err, "removing %s failed", p)
+		err = fmt.Errorf("removing %s failed: %w", p, err)
 		return
 	}
 
 	// Mkdir
-	astilog.Debugf("Creating %s", p)
+	b.l.Debugf("Creating %s", p)
 	if err = os.MkdirAll(p, 0755); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", p)
+		err = fmt.Errorf("mkdirall %s failed: %w", p, err)
 		return
 	}
 	return
@@ -456,19 +456,19 @@ func (b *Bundler) resetDir(p string) (err error) {
 func (b *Bundler) BindData(os, arch string) (err error) {
 	// Reset bind dir
 	if err = b.resetDir(b.pathBindInput); err != nil {
-		err = errors.Wrapf(err, "resetting dir %s failed", b.pathBindInput)
+		err = fmt.Errorf("resetting dir %s failed: %w", b.pathBindInput, err)
 		return
 	}
 
 	// Provision the vendor
 	if err = b.provisionVendor(os, arch); err != nil {
-		err = errors.Wrap(err, "provisioning the vendor failed")
+		err = fmt.Errorf("provisioning the vendor failed: %w", err)
 		return
 	}
 
 	// Adapt resources
 	if err = b.adaptResources(); err != nil {
-		err = errors.Wrap(err, "adapting resources failed")
+		err = fmt.Errorf("adapting resources failed: %w", err)
 		return
 	}
 
@@ -481,7 +481,7 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 	c.Tags = fmt.Sprintf("%s,%s", os, arch)
 
 	// Bind data
-	astilog.Debugf("Generating %s", c.Output)
+	b.l.Debugf("Generating %s", c.Output)
 	err = bindata.Translate(c)
 	return
 }
@@ -489,28 +489,28 @@ func (b *Bundler) BindData(os, arch string) (err error) {
 // provisionVendor provisions the vendor folder
 func (b *Bundler) provisionVendor(oS, arch string) (err error) {
 	// Create the vendor folder
-	astilog.Debugf("Creating %s", b.pathVendor)
+	b.l.Debugf("Creating %s", b.pathVendor)
 	if err = os.MkdirAll(b.pathVendor, 0755); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", b.pathVendor)
+		err = fmt.Errorf("mkdirall %s failed: %w", b.pathVendor, err)
 		return
 	}
 
 	// Create the cache folder
-	astilog.Debugf("Creating %s", b.pathCache)
+	b.l.Debugf("Creating %s", b.pathCache)
 	if err = os.MkdirAll(b.pathCache, 0755); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", b.pathCache)
+		err = fmt.Errorf("mkdirall %s failed: %w", b.pathCache, err)
 		return
 	}
 
 	// Provision astilectron
 	if err = b.provisionVendorAstilectron(); err != nil {
-		err = errors.Wrap(err, "provisioning astilectron vendor failed")
+		err = fmt.Errorf("provisioning astilectron vendor failed: %w", err)
 		return
 	}
 
 	// Provision electron
 	if err = b.provisionVendorElectron(oS, arch); err != nil {
-		err = errors.Wrapf(err, "provisioning electron vendor for OS %s and arch %s failed", oS, arch)
+		err = fmt.Errorf("provisioning electron vendor for OS %s and arch %s failed: %w", oS, arch, err)
 		return
 	}
 	return
@@ -520,12 +520,12 @@ func (b *Bundler) provisionVendor(oS, arch string) (err error) {
 func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string) (err error) {
 	// Download source
 	if _, errStat := os.Stat(pathCache); os.IsNotExist(errStat) {
-		if err = astilectron.Download(b.ctx, b.d, pathDownload, pathCache); err != nil {
-			err = errors.Wrapf(err, "downloading %s into %s failed", pathDownload, pathCache)
+		if err = astilectron.Download(b.ctx, b.l, b.d, pathDownload, pathCache); err != nil {
+			err = fmt.Errorf("downloading %s into %s failed: %w", pathDownload, pathCache, err)
 			return
 		}
 	} else {
-		astilog.Debugf("%s already exists, skipping download of %s", pathCache, pathDownload)
+		b.l.Debugf("%s already exists, skipping download of %s", pathCache, pathDownload)
 	}
 
 	// Check context error
@@ -534,9 +534,9 @@ func (b *Bundler) provisionVendorZip(pathDownload, pathCache, pathVendor string)
 	}
 
 	// Copy
-	astilog.Debugf("Copying %s to %s", pathCache, pathVendor)
+	b.l.Debugf("Copying %s to %s", pathCache, pathVendor)
 	if err = astikit.CopyFile(b.ctx, pathVendor, pathCache, astikit.LocalCopyFileFunc); err != nil {
-		err = errors.Wrapf(err, "copying %s to %s failed", pathCache, pathVendor)
+		err = fmt.Errorf("copying %s to %s failed: %w", pathCache, pathVendor, err)
 		return
 	}
 
@@ -553,9 +553,9 @@ func (b *Bundler) provisionVendorAstilectron() (err error) {
 	var p = filepath.Join(b.pathCache, fmt.Sprintf("astilectron-%s.zip", b.versionAstilectron))
 	if len(b.pathAstilectron) > 0 {
 		// Zip
-		astilog.Debugf("Zipping %s into %s", b.pathAstilectron, p)
+		b.l.Debugf("Zipping %s into %s", b.pathAstilectron, p)
 		if err = astikit.Zip(b.ctx, p, b.pathAstilectron+"/"+fmt.Sprintf("astilectron-%s", b.versionAstilectron)); err != nil {
-			err = errors.Wrapf(err, "zipping %s into %s failed", b.pathAstilectron, p)
+			err = fmt.Errorf("zipping %s into %s failed: %w", b.pathAstilectron, p, err)
 			return
 		}
 
@@ -578,17 +578,17 @@ func (b *Bundler) provisionVendorElectron(oS, arch string) error {
 func (b *Bundler) adaptResources() (err error) {
 	// Create dir
 	var o = filepath.Join(b.pathBindInput, b.pathResources)
-	astilog.Debugf("Creating %s", o)
+	b.l.Debugf("Creating %s", o)
 	if err = os.MkdirAll(o, 0755); err != nil {
-		err = errors.Wrapf(err, "mkdirall %s failed", o)
+		err = fmt.Errorf("mkdirall %s failed: %w", o, err)
 		return
 	}
 
 	// Copy resources
 	var i = filepath.Join(b.pathInput, b.pathResources)
-	astilog.Debugf("Copying %s to %s", i, o)
+	b.l.Debugf("Copying %s to %s", i, o)
 	if err = astikit.CopyFile(b.ctx, o, i, astikit.LocalCopyFileFunc); err != nil {
-		err = errors.Wrapf(err, "copying %s to %s failed", i, o)
+		err = fmt.Errorf("copying %s to %s failed: %w", i, o, err)
 		return
 	}
 
@@ -607,10 +607,10 @@ func (b *Bundler) adaptResources() (err error) {
 		}
 
 		// Run
-		astilog.Debugf("Running %s in directory %s", strings.Join(cmd.Args, " "), cmd.Dir)
+		b.l.Debugf("Running %s in directory %s", strings.Join(cmd.Args, " "), cmd.Dir)
 		var b []byte
 		if b, err = cmd.CombinedOutput(); err != nil {
-			err = errors.Wrapf(err, "running %s failed with output %s", strings.Join(cmd.Args, " "), b)
+			err = fmt.Errorf("running %s failed with output %s", strings.Join(cmd.Args, " "), b)
 			return
 		}
 	}
@@ -621,9 +621,9 @@ func (b *Bundler) adaptResources() (err error) {
 func (b *Bundler) addWindowsSyso(arch string) (err error) {
 	if len(b.pathIconWindows) > 0 || len(b.pathManifest) > 0 {
 		var p = filepath.Join(b.pathInput, "windows.syso")
-		astilog.Debugf("Running rsrc for icon %s into %s", b.pathIconWindows, p)
+		b.l.Debugf("Running rsrc for icon %s into %s", b.pathIconWindows, p)
 		if err = rsrc.Embed(p, arch, b.pathManifest, b.pathIconWindows); err != nil {
-			err = errors.Wrapf(err, "running rsrc for icon %s into %s failed", b.pathIconWindows, p)
+			err = fmt.Errorf("running rsrc for icon %s into %s failed: %w", b.pathIconWindows, p, err)
 			return
 		}
 	}
@@ -635,9 +635,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	// Create MacOS folder
 	var contentsPath = filepath.Join(environmentPath, b.appName+".app", "Contents")
 	var macOSPath = filepath.Join(contentsPath, "MacOS")
-	astilog.Debugf("Creating %s", macOSPath)
+	b.l.Debugf("Creating %s", macOSPath)
 	if err = os.MkdirAll(macOSPath, 0777); err != nil {
-		err = errors.Wrapf(err, "mkdirall of %s failed", macOSPath)
+		err = fmt.Errorf("mkdirall of %s failed: %w", macOSPath, err)
 		return
 	}
 
@@ -653,9 +653,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	}
 
 	// Move binary
-	astilog.Debugf("Moving %s to %s", binaryPath, macOSBinaryPath)
+	b.l.Debugf("Moving %s to %s", binaryPath, macOSBinaryPath)
 	if err = astikit.MoveFile(b.ctx, macOSBinaryPath, binaryPath, astikit.LocalCopyFileFunc); err != nil {
-		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, macOSBinaryPath)
+		err = fmt.Errorf("moving %s to %s failed: %w", binaryPath, macOSBinaryPath, err)
 		return
 	}
 
@@ -665,9 +665,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	}
 
 	// Make sure the binary is executable
-	astilog.Debugf("Chmoding %s", macOSBinaryPath)
+	b.l.Debugf("Chmoding %s", macOSBinaryPath)
 	if err = os.Chmod(macOSBinaryPath, 0777); err != nil {
-		err = errors.Wrapf(err, "chmoding %s failed", macOSBinaryPath)
+		err = fmt.Errorf("chmoding %s failed: %w", macOSBinaryPath, err)
 		return
 	}
 
@@ -675,9 +675,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 	if len(b.pathIconDarwin) > 0 {
 		// Create Resources folder
 		var resourcesPath = filepath.Join(contentsPath, "Resources")
-		astilog.Debugf("Creating %s", resourcesPath)
+		b.l.Debugf("Creating %s", resourcesPath)
 		if err = os.MkdirAll(resourcesPath, 0777); err != nil {
-			err = errors.Wrapf(err, "mkdirall of %s failed", resourcesPath)
+			err = fmt.Errorf("mkdirall of %s failed: %w", resourcesPath, err)
 			return
 		}
 
@@ -692,9 +692,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 
 		// Copy icon
 		var ip = filepath.Join(resourcesPath, iconFileName)
-		astilog.Debugf("Copying %s to %s", b.pathIconDarwin, ip)
+		b.l.Debugf("Copying %s to %s", b.pathIconDarwin, ip)
 		if err = astikit.CopyFile(b.ctx, ip, b.pathIconDarwin, astikit.LocalCopyFileFunc); err != nil {
-			err = errors.Wrapf(err, "copying %s to %s failed", b.pathIconDarwin, ip)
+			err = fmt.Errorf("copying %s to %s failed: %w", b.pathIconDarwin, ip, err)
 			return
 		}
 
@@ -706,11 +706,11 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 
 	// Add Info.plist file
 	var fp = filepath.Join(contentsPath, "Info.plist")
-	astilog.Debugf("Adding Info.plist to %s", fp)
+	b.l.Debugf("Adding Info.plist to %s", fp)
 
 	if infoPlist != nil {
 		if err = plister.Generate(fp, infoPlist); err != nil {
-			err = errors.Wrap(err, "generating Info.plist failed")
+			err = fmt.Errorf("generating Info.plist failed: %w", err)
 		}
 		return
 	}
@@ -739,7 +739,7 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 		<string>APPL</string>
 	</dict>
 </plist>`), 0777); err != nil {
-		err = errors.Wrapf(err, "adding Info.plist to %s failed", fp)
+		err = fmt.Errorf("adding Info.plist to %s failed: %w", fp, err)
 		return
 	}
 	return
@@ -750,9 +750,9 @@ func (b *Bundler) finishDarwin(environmentPath, binaryPath string) (err error) {
 func (b *Bundler) finishLinux(environmentPath, binaryPath string) (err error) {
 	// Move binary
 	var linuxBinaryPath = filepath.Join(environmentPath, b.appName)
-	astilog.Debugf("Moving %s to %s", binaryPath, linuxBinaryPath)
+	b.l.Debugf("Moving %s to %s", binaryPath, linuxBinaryPath)
 	if err = astikit.MoveFile(b.ctx, linuxBinaryPath, binaryPath, astikit.LocalCopyFileFunc); err != nil {
-		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, linuxBinaryPath)
+		err = fmt.Errorf("moving %s to %s failed: %w", binaryPath, linuxBinaryPath, err)
 		return
 	}
 
@@ -767,9 +767,9 @@ func (b *Bundler) finishLinux(environmentPath, binaryPath string) (err error) {
 func (b *Bundler) finishWindows(environmentPath, binaryPath string) (err error) {
 	// Move binary
 	var windowsBinaryPath = filepath.Join(environmentPath, b.appName+".exe")
-	astilog.Debugf("Moving %s to %s", binaryPath, windowsBinaryPath)
+	b.l.Debugf("Moving %s to %s", binaryPath, windowsBinaryPath)
 	if err = astikit.MoveFile(b.ctx, windowsBinaryPath, binaryPath, astikit.LocalCopyFileFunc); err != nil {
-		err = errors.Wrapf(err, "moving %s to %s failed", binaryPath, windowsBinaryPath)
+		err = fmt.Errorf("moving %s to %s failed: %w", binaryPath, windowsBinaryPath, err)
 		return
 	}
 

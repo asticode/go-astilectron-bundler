@@ -138,11 +138,11 @@ You can add custom **Info.plist** configuration to the **bundler.json**:
 
 If **astilectron-bundler** has been installed properly (and the $GOPATH is in your $PATH), run the following command:
 
-    $ astilectron-bundler -v -c <path to your configuration file>
+    $ astilectron-bundler -c <path to your configuration file>
     
 or if your working directory is your project directory and your bundler configuration has the proper name (`bundler.json`)
 
-    $ astilectron-bundler -v
+    $ astilectron-bundler
     
 # Output
 
@@ -165,18 +165,18 @@ multiple values split on commas, like this:
 
 That would set two variables and enable the race detection.
 
-# Subcommands
+# Commands
 ## Only bind data: bd
 
-Use this subcommand if you want to skip most of the bundling process and only bind data/generate the `bind.go` file (useful when you want to test your app running `go run *.go`):
+Use this command if you want to skip most of the bundling process and only bind data/generate the `bind.go` file (useful when you want to test your app running `go run *.go`):
 
-    $ astilectron-bundler bd -v -c <path to your configuration file>
+    $ astilectron-bundler bd -c <path to your configuration file>
 
 ## Clear the cache: cc
 
-The **bundler** stores downloaded files in a cache to avoid downloading them over and over again. That cache may be corrupted. In that case, use this subcommand to clear the cache:
+The **bundler** stores downloaded files in a cache to avoid downloading them over and over again. That cache may be corrupted. In that case, use this command to clear the cache:
 
-    $ astilectron-bundler cc -v
+    $ astilectron-bundler cc
     
 # Frequent problems
 ## "xxx architecture of input file `xxx' is incompatible with xxx output"

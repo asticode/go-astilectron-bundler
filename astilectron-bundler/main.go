@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/asticode/go-astikit"
 	astibundler "github.com/asticode/go-astilectron-bundler"
-	"github.com/asticode/go-astilog"
-	"github.com/pkg/errors"
 )
 
 var ldflags = LDFlags{}
@@ -30,11 +30,12 @@ func init() {
 }
 
 func main() {
-	// Init
-	astilog.SetHandyFlags()
+	// Parse flags
 	cmd := astikit.FlagCmd()
 	flag.Parse()
-	astilog.FlagInit()
+
+	// Create logger
+	l := log.New(log.Writer(), log.Prefix(), log.Flags())
 
 	// Get configuration path
 	var cp = *configurationPath
@@ -43,7 +44,7 @@ func main() {
 		// Get working directory path
 		var wd string
 		if wd, err = os.Getwd(); err != nil {
-			astilog.Fatal(errors.Wrap(err, "os.Getwd failed"))
+			l.Fatal(fmt.Errorf("os.Getwd failed: %w", err))
 		}
 
 		// Set configuration path
@@ -53,14 +54,14 @@ func main() {
 	// Open file
 	var f *os.File
 	if f, err = os.Open(cp); err != nil {
-		astilog.Fatal(errors.Wrapf(err, "opening file %s failed", cp))
+		l.Fatal(fmt.Errorf("opening file %s failed: %w", cp, err))
 	}
 	defer f.Close()
 
 	// Unmarshal
 	var c *astibundler.Configuration
 	if err = json.NewDecoder(f).Decode(&c); err != nil {
-		astilog.Fatal(errors.Wrap(err, "unmarshaling configuration failed"))
+		l.Fatal(fmt.Errorf("unmarshaling configuration failed: %w", err))
 	}
 
 	// Astilectron path
@@ -95,8 +96,8 @@ func main() {
 
 	// Build bundler
 	var b *astibundler.Bundler
-	if b, err = astibundler.New(c); err != nil {
-		astilog.Fatal(errors.Wrap(err, "building bundler failed"))
+	if b, err = astibundler.New(c, l); err != nil {
+		l.Fatal(fmt.Errorf("building bundler failed: %w", err))
 	}
 
 	// Handle signals
@@ -108,18 +109,18 @@ func main() {
 		// Bind Data
 		for _, env := range c.Environments {
 			if err = b.BindData(env.OS, env.Arch); err != nil {
-				astilog.Fatal(errors.Wrapf(err, "binding data failed for %s/%s", env.OS, env.Arch))
+				l.Fatal(fmt.Errorf("binding data failed for %s/%s: %w", env.OS, env.Arch, err))
 			}
 		}
 	case "cc":
 		// Clear cache
 		if err = b.ClearCache(); err != nil {
-			astilog.Fatal(errors.Wrap(err, "clearing cache failed"))
+			l.Fatal(fmt.Errorf("clearing cache failed: %w", err))
 		}
 	default:
 		// Bundle
 		if err = b.Bundle(); err != nil {
-			astilog.Fatal(errors.Wrap(err, "bundling failed"))
+			l.Fatal(fmt.Errorf("bundling failed: %w", err))
 		}
 	}
 }
