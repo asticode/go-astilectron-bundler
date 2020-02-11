@@ -27,9 +27,7 @@ Here's the basic configuration you'll usually need:
   "app_name": "Test",
   "icon_path_darwin": "path/to/icon.icns",
   "icon_path_linux": "path/to/icon.png",
-  "icon_path_windows": "path/to/icon.ico",
-  "version_electron": "4.0.1",
-  "version_astilectron": "0.33.0",
+  "icon_path_windows": "path/to/icon.ico"
 }
 ```
 
@@ -39,8 +37,8 @@ It will process the project located in the current directory and bundle it in th
 
 The following customization can be made to `bundler.json`
 
-   * version_electron - version of electron, defaults to `4.0.1`
-   * version_astilectron - version of astilectron, defaults to `0.33.0` 
+   * version_electron - version of electron, defaults to the value specified in the `go-astilectron` version you're using
+   * version_astilectron - version of astilectron, defaults to the value specified in the `go-astilectron` version you're using
 
 ## Bundle for other environments
 
