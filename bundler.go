@@ -23,7 +23,7 @@ import (
 // Configuration represents the bundle configuration
 type Configuration struct {
 	// The app name as it should be displayed everywhere
-	// It's also set as an ldflag and therefore accessible in a global var main.AppName
+	// It's also set as an ldflag and therefore accessible in a global var package_name.AppName
 	AppName string `json:"app_name"`
 
 	// The bind configuration
@@ -379,10 +379,10 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	std := LDFlags{
 		"X": []string{
-			`main.AppName=` + b.appName,
-			`main.BuiltAt=` + time.Now().String(),
-			`main.VersionAstilectron=` + b.versionAstilectron,
-			`main.VersionElectron=` + b.versionElectron,
+			b.bindPackage + `.AppName=` + b.appName,
+			b.bindPackage + `.BuiltAt=` + time.Now().String(),
+			b.bindPackage + `.VersionAstilectron=` + b.versionAstilectron,
+			b.bindPackage + `.VersionElectron=` + b.versionElectron,
 		},
 	}
 	if e.OS == "windows" && !b.showWindowsConsole {
