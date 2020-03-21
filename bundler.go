@@ -554,7 +554,7 @@ func (b *Bundler) provisionVendorAstilectron() (err error) {
 	if len(b.pathAstilectron) > 0 {
 		// Zip
 		b.l.Debugf("Zipping %s into %s", b.pathAstilectron, p)
-		if err = astikit.Zip(b.ctx, p, b.pathAstilectron+"/"+fmt.Sprintf("astilectron-%s", b.versionAstilectron)); err != nil {
+		if err = astikit.Zip(b.ctx, p+"/"+fmt.Sprintf("astilectron-%s", b.versionAstilectron), b.pathAstilectron); err != nil {
 			err = fmt.Errorf("zipping %s into %s failed: %w", b.pathAstilectron, p, err)
 			return
 		}
