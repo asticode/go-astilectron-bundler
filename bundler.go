@@ -30,7 +30,7 @@ type Configuration struct {
 	Bind ConfigurationBind `json:"bind"`
 
 	// Build tags passed to go build
-	BuildTags string `json:"build_tags"`
+	BuildFlags map[string]string `json:"build_flags"`
 
 	// Whether the app is a darwin agent app
 	DarwinAgentApp bool `json:"darwin_agent_app"`
@@ -123,7 +123,7 @@ type ConfigurationResourcesAdapter struct {
 type Bundler struct {
 	appName              string
 	bindPackage          string
-	buildTags            string
+	buildFlags           map[string]string
 	cancel               context.CancelFunc
 	ctx                  context.Context
 	d                    *astikit.HTTPDownloader
@@ -203,8 +203,8 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 		b.versionElectron = c.VersionElectron
 	}
 
-	if c.BuildTags != "" {
-		b.buildTags = c.BuildTags
+	if len(c.BuildFlags) > 0 {
+		b.buildFlags = c.BuildFlags
 	}
 
 	// Add context
@@ -421,9 +421,19 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		}
 	}
 
-	if b.buildTags != "" {
-		tags := []string{"-tags", b.buildTags}
-		cmd.Args = append(cmd.Args[:2], append(tags, cmd.Args[2:]...)...)
+	flags := make([]string, 0)
+
+	for k, v := range b.buildFlags {
+		flag := k
+
+		if !strings.HasPrefix(k, "-") {
+			flag = "-" + k
+		}
+		flags = append(flags, flag, v)
+	}
+
+	if len(flags) > 0 {
+		cmd.Args = append(cmd.Args[:2], append(flags, cmd.Args[2:]...)...)
 	}
 
 	// Exec
