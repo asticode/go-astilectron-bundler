@@ -412,7 +412,11 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 		} else {
 			flag = "-" + k
 		}
-		args = append(args, flag, v)
+		if v != "" {
+			args = append(args, flag, v)
+		} else {
+			args = append(args, flag)
+		}
 	}
 
 	var binaryPath = filepath.Join(environmentPath, "binary")
