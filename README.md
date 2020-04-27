@@ -85,6 +85,17 @@ You can execute custom actions on your resources before binding them to the bina
 
 All paths must be relative to the `resources` folder except if you provide a `dir` option (a path relative to the `resources` folder) in which case it will be relative to that path.
 
+## Build flags
+
+You can pass arbitrary build flags into the build command with the `build_flags` key:
+```json
+{
+  "build_flags": {
+    "gcflags": "\"all=-N -l\""
+  }
+}
+```
+
 ## Custom paths
 
 You can set the following paths:
