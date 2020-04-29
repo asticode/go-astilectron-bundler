@@ -104,6 +104,10 @@ type ConfigurationBind struct {
 	// The package of the generated file
 	// Defaults to "main"
 	Package string `json:"package"`
+
+	// The path used for the LD Flags
+	// Defaults to the `Package` value
+	PackagePath string `json:"package_path"`
 }
 
 // ConfigurationEnvironment represents the bundle configuration environment
@@ -123,6 +127,7 @@ type ConfigurationResourcesAdapter struct {
 type Bundler struct {
 	appName              string
 	bindPackage          string
+	bindPackagePath      string
 	buildFlags           map[string]string
 	cancel               context.CancelFunc
 	ctx                  context.Context
@@ -173,8 +178,9 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
-		appName:     c.AppName,
-		bindPackage: c.Bind.Package,
+		appName:         c.AppName,
+		bindPackage:     c.Bind.Package,
+		bindPackagePath: c.Bind.PackagePath,
 		d: astikit.NewHTTPDownloader(astikit.HTTPDownloaderOptions{
 			Sender: astikit.HTTPSenderOptions{
 				Logger: l,
@@ -310,6 +316,12 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 	if len(b.bindPackage) == 0 {
 		b.bindPackage = "main"
 	}
+
+	// Bind package path
+	if len(b.bindPackagePath) == 0 {
+		b.bindPackagePath = b.bindPackage
+	}
+
 	return
 }
 
@@ -387,10 +399,10 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	std := LDFlags{
 		"X": []string{
-			b.bindPackage + `.AppName=` + b.appName,
-			b.bindPackage + `.BuiltAt=` + time.Now().String(),
-			b.bindPackage + `.VersionAstilectron=` + b.versionAstilectron,
-			b.bindPackage + `.VersionElectron=` + b.versionElectron,
+			b.bindPackagePath + `.AppName=` + b.appName,
+			b.bindPackagePath + `.BuiltAt=` + time.Now().String(),
+			b.bindPackagePath + `.VersionAstilectron=` + b.versionAstilectron,
+			b.bindPackagePath + `.VersionElectron=` + b.versionElectron,
 		},
 	}
 	if e.OS == "windows" && !b.showWindowsConsole {
