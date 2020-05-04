@@ -58,6 +58,10 @@ type Configuration struct {
 	// LDFlags to pass through to go build
 	LDFlags LDFlags `json:"ldflags"`
 
+	// The path used for the LD Flags
+	// Defaults to the `Bind.Package` value
+	LDFlagsPackage string `json:"ldflags_package"`
+
 	// The path to application manifest file (WINDOWS ONLY)
 	ManifestPath string `json:"manifest_path"`
 
@@ -104,10 +108,6 @@ type ConfigurationBind struct {
 	// The package of the generated file
 	// Defaults to "main"
 	Package string `json:"package"`
-
-	// The path used for the LD Flags
-	// Defaults to the `Package` value
-	PackagePath string `json:"package_path"`
 }
 
 // ConfigurationEnvironment represents the bundle configuration environment
@@ -127,7 +127,6 @@ type ConfigurationResourcesAdapter struct {
 type Bundler struct {
 	appName              string
 	bindPackage          string
-	bindPackagePath      string
 	buildFlags           map[string]string
 	cancel               context.CancelFunc
 	ctx                  context.Context
@@ -137,6 +136,7 @@ type Bundler struct {
 	infoPlist            map[string]interface{}
 	l                    astikit.SeverityLogger
 	ldflags              LDFlags
+	ldflagsPackage       string
 	pathAstilectron      string
 	pathBindInput        string
 	pathBindOutput       string
@@ -178,9 +178,8 @@ func absPath(configPath string, defaultPathFn func() (string, error)) (o string,
 func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 	// Init
 	b = &Bundler{
-		appName:         c.AppName,
-		bindPackage:     c.Bind.Package,
-		bindPackagePath: c.Bind.PackagePath,
+		appName:     c.AppName,
+		bindPackage: c.Bind.Package,
 		d: astikit.NewHTTPDownloader(astikit.HTTPDownloaderOptions{
 			Sender: astikit.HTTPSenderOptions{
 				Logger: l,
@@ -191,6 +190,7 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 		resourcesAdapters:  c.ResourcesAdapters,
 		l:                  astikit.AdaptStdLogger(l),
 		ldflags:            c.LDFlags,
+		ldflagsPackage:     c.LDFlagsPackage,
 		infoPlist:          c.InfoPlist,
 		showWindowsConsole: c.ShowWindowsConsole,
 		versionAstilectron: astilectron.DefaultVersionAstilectron,
@@ -317,9 +317,9 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 		b.bindPackage = "main"
 	}
 
-	// Bind package path
-	if len(b.bindPackagePath) == 0 {
-		b.bindPackagePath = b.bindPackage
+	// Ldflags package
+	if len(b.ldflagsPackage) == 0 {
+		b.ldflagsPackage = b.bindPackage
 	}
 
 	return
@@ -399,10 +399,10 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	std := LDFlags{
 		"X": []string{
-			b.bindPackagePath + `.AppName=` + b.appName,
-			b.bindPackagePath + `.BuiltAt=` + time.Now().String(),
-			b.bindPackagePath + `.VersionAstilectron=` + b.versionAstilectron,
-			b.bindPackagePath + `.VersionElectron=` + b.versionElectron,
+			b.ldflagsPackage + `.AppName=` + b.appName,
+			b.ldflagsPackage + `.BuiltAt=` + time.Now().String(),
+			b.ldflagsPackage + `.VersionAstilectron=` + b.versionAstilectron,
+			b.ldflagsPackage + `.VersionElectron=` + b.versionElectron,
 		},
 	}
 	if e.OS == "windows" && !b.showWindowsConsole {
