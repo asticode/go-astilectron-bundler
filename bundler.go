@@ -58,6 +58,10 @@ type Configuration struct {
 	// LDFlags to pass through to go build
 	LDFlags LDFlags `json:"ldflags"`
 
+	// The path used for the LD Flags
+	// Defaults to the `Bind.Package` value
+	LDFlagsPackage string `json:"ldflags_package"`
+
 	// The path to application manifest file (WINDOWS ONLY)
 	ManifestPath string `json:"manifest_path"`
 
@@ -132,6 +136,7 @@ type Bundler struct {
 	infoPlist            map[string]interface{}
 	l                    astikit.SeverityLogger
 	ldflags              LDFlags
+	ldflagsPackage       string
 	pathAstilectron      string
 	pathBindInput        string
 	pathBindOutput       string
@@ -185,6 +190,7 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 		resourcesAdapters:  c.ResourcesAdapters,
 		l:                  astikit.AdaptStdLogger(l),
 		ldflags:            c.LDFlags,
+		ldflagsPackage:     c.LDFlagsPackage,
 		infoPlist:          c.InfoPlist,
 		showWindowsConsole: c.ShowWindowsConsole,
 		versionAstilectron: astilectron.DefaultVersionAstilectron,
@@ -310,6 +316,12 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 	if len(b.bindPackage) == 0 {
 		b.bindPackage = "main"
 	}
+
+	// Ldflags package
+	if len(b.ldflagsPackage) == 0 {
+		b.ldflagsPackage = b.bindPackage
+	}
+
 	return
 }
 
@@ -387,10 +399,10 @@ func (b *Bundler) bundle(e ConfigurationEnvironment) (err error) {
 
 	std := LDFlags{
 		"X": []string{
-			b.bindPackage + `.AppName=` + b.appName,
-			b.bindPackage + `.BuiltAt=` + time.Now().String(),
-			b.bindPackage + `.VersionAstilectron=` + b.versionAstilectron,
-			b.bindPackage + `.VersionElectron=` + b.versionElectron,
+			b.ldflagsPackage + `.AppName=` + b.appName,
+			b.ldflagsPackage + `.BuiltAt=` + time.Now().String(),
+			b.ldflagsPackage + `.VersionAstilectron=` + b.versionAstilectron,
+			b.ldflagsPackage + `.VersionElectron=` + b.versionElectron,
 		},
 	}
 	if e.OS == "windows" && !b.showWindowsConsole {
