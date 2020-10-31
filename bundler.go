@@ -280,7 +280,11 @@ func New(c *Configuration, l astikit.StdLogger) (b *Bundler, err error) {
 
 	// If build path is empty, ldflags are not set properly
 	if len(b.pathBuild) == 0 {
+		// Keep . as the default incase input_path is not set in the config
 		b.pathBuild = "."
+		if c.InputPath != "" {
+			b.pathBuild = c.InputPath
+		}
 	}
 
 	// Resources path
