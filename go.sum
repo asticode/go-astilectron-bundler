@@ -1,9 +1,9 @@
 github.com/akavel/rsrc v0.8.0 h1:zjWn7ukO9Kc5Q62DOJCcxGpXC18RawVtYAGdz2aLlfw=
 github.com/akavel/rsrc v0.8.0/go.mod h1:uLoCtb9J+EyAqh+26kdrTgmzRBFPGOolLWKpdxkKq+c=
-github.com/asticode/go-astikit v0.6.0 h1:zmbw5J2Du8SedBG1I5JjlsS5oG2vHcb6ZzhWMCMbLzs=
-github.com/asticode/go-astikit v0.6.0/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=
-github.com/asticode/go-astilectron v0.22.0 h1:YT9LzDroGf2YlIAc8JBgWsvggOfeL4yj/0WXL9Qf918=
-github.com/asticode/go-astilectron v0.22.0/go.mod h1:bF7zkk11IwP8lBPhEl3cCtkKIwsRRR6264OFM1v3Yso=
+github.com/asticode/go-astikit v0.14.0 h1:ZF5Do/U+ucB++MQk4n7L2iHF4Eo8LhQgBjRj9nlYftc=
+github.com/asticode/go-astikit v0.14.0/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=
+github.com/asticode/go-astilectron v0.22.1 h1:MA95Ek3lhnaMkv5rYf/j0EeRAr91pzlov143VZeMK7k=
+github.com/asticode/go-astilectron v0.22.1/go.mod h1:3AQB2L/UtQWk2n3cc6MtIGAXcCjHOax1X91pWBLWx28=
 github.com/asticode/go-bindata v1.0.0 h1:5whO0unjdx2kbAbzoBMS3307jKAEf3oQ1lJcx5RdgA8=
 github.com/asticode/go-bindata v1.0.0/go.mod h1:t/Y+/iCLrvaYkv8Y6PscRnyUeYzy9y9+8JC9CMcKdHY=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
