@@ -2,6 +2,10 @@ This package provides a way to bundle an [astilectron](https://github.com/astico
 
 Check out the [demo](https://github.com/asticode/go-astilectron-demo) to see a working example.
 
+# Warning
+
+This project is not maintained anymore.
+
 # Installation
 
 Run the following command:
